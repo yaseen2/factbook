@@ -7,10 +7,21 @@ export const dynamic = "force-dynamic";
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const docId = searchParams.get("docId");
+    let docId = searchParams.get("docId");
 
     if (!docId || !docId.trim()) {
-      return NextResponse.json({ error: "Missing docId parameter" }, { status: 400 });
+      // Fallback to the environment variable set on Vercel
+      docId = process.env.GOOGLE_DOC_ID || "";
+    }
+
+    if (!docId || !docId.trim()) {
+      // If still missing, return a status indicating KV/DB is not active/configured for a target doc
+      return NextResponse.json({ 
+        success: true, 
+        records: [], 
+        isCloud: false,
+        message: "No Google Doc ID provided in parameters or env variables."
+      });
     }
 
     if (!isKvConfigured) {
@@ -43,11 +54,19 @@ export async function GET(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const docId = searchParams.get("docId");
+    let docId = searchParams.get("docId");
     const recordId = searchParams.get("id");
 
-    if (!docId || !docId.trim() || !recordId || !recordId.trim()) {
-      return NextResponse.json({ error: "Missing docId or id parameter" }, { status: 400 });
+    if (!recordId || !recordId.trim()) {
+      return NextResponse.json({ error: "Missing id parameter" }, { status: 400 });
+    }
+
+    if (!docId || !docId.trim()) {
+      docId = process.env.GOOGLE_DOC_ID || "";
+    }
+
+    if (!docId || !docId.trim()) {
+      return NextResponse.json({ error: "Missing docId parameter and fallback GOOGLE_DOC_ID" }, { status: 400 });
     }
 
     if (!isKvConfigured) {

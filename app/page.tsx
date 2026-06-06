@@ -217,18 +217,19 @@ export default function AppDashboard() {
       // Hybrid Load Logic: Cloud KV vs LocalStorage fallback
       const loadRecords = async () => {
         const savedDocId = localStorage.getItem("fb_doc_id") || "";
-        if (savedDocId.trim()) {
-          try {
-            const res = await fetch(`/api/records?docId=${encodeURIComponent(savedDocId.trim())}`);
-            const data = await res.json();
-            if (res.ok && data.success && data.isCloud) {
-              setRecords(data.records);
-              setIsCloudConnected(true);
-              return;
-            }
-          } catch (err) {
-            console.warn("Failed to load records from Vercel KV, falling back to LocalStorage:", err);
+        try {
+          const url = savedDocId.trim()
+            ? `/api/records?docId=${encodeURIComponent(savedDocId.trim())}`
+            : "/api/records";
+          const res = await fetch(url);
+          const data = await res.json();
+          if (res.ok && data.success && data.isCloud) {
+            setRecords(data.records);
+            setIsCloudConnected(true);
+            return;
           }
+        } catch (err) {
+          console.warn("Failed to load records from Vercel KV, falling back to LocalStorage:", err);
         }
         
         // LocalStorage fallback
