@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenAI, Type } from "@google/genai";
 import { google } from "googleapis";
-import { kv } from "@vercel/kv";
+import { kv, isKvConfigured } from "@/lib/kv";
 
 interface CommonTab {
   tabId?: string;
@@ -577,7 +577,7 @@ ${context || "No context provided."}
     }
 
     // 4. SAVE TO CLOUD LEDGER DATABASE IF KV IS ACTIVE AND A GOOGLE DOC ID IS PROVIDED
-    if (docId && !!process.env.KV_REST_API_URL) {
+    if (docId && isKvConfigured) {
       try {
         const key = `factbook:records:${docId.trim()}`;
         const newRecord = {

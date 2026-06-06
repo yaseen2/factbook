@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { kv } from "@vercel/kv";
+import { kv, isKvConfigured } from "@/lib/kv";
 
 // Disable static rendering for this API route
 export const dynamic = "force-dynamic";
@@ -13,14 +13,13 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Missing docId parameter" }, { status: 400 });
     }
 
-    const isKvConfigured = !!process.env.KV_REST_API_URL;
     if (!isKvConfigured) {
       // Return a status indicating KV is not configured, so the frontend knows to use local storage
       return NextResponse.json({ 
         success: true, 
         records: [], 
         isCloud: false,
-        message: "Vercel KV is not configured. Falling back to local storage."
+        message: "Vercel KV/Redis is not configured. Falling back to local storage."
       });
     }
 
@@ -51,9 +50,8 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: "Missing docId or id parameter" }, { status: 400 });
     }
 
-    const isKvConfigured = !!process.env.KV_REST_API_URL;
     if (!isKvConfigured) {
-      return NextResponse.json({ error: "Vercel KV is not configured on this server." }, { status: 501 });
+      return NextResponse.json({ error: "Vercel KV/Redis is not configured on this server." }, { status: 501 });
     }
 
     const key = `factbook:records:${docId.trim()}`;
