@@ -200,6 +200,7 @@ export default function AppDashboard() {
   const [dragActive, setDragActive] = useState(false);
   const [simulationMsg, setSimulationMsg] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
+  const [isCloudConnected, setIsCloudConnected] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -213,14 +214,36 @@ export default function AppDashboard() {
           .catch((err) => console.warn("PWA Service Worker registration skipped or failed:", err));
       }
 
-      const savedRecords = localStorage.getItem("fb_records");
-      if (savedRecords) {
-        try {
-          setRecords(JSON.parse(savedRecords));
-        } catch (e) {
-          console.error("Failed to parse local records.", e);
+      // Hybrid Load Logic: Cloud KV vs LocalStorage fallback
+      const loadRecords = async () => {
+        const savedDocId = localStorage.getItem("fb_doc_id") || "";
+        if (savedDocId.trim()) {
+          try {
+            const res = await fetch(`/api/records?docId=${encodeURIComponent(savedDocId.trim())}`);
+            const data = await res.json();
+            if (res.ok && data.success && data.isCloud) {
+              setRecords(data.records);
+              setIsCloudConnected(true);
+              return;
+            }
+          } catch (err) {
+            console.warn("Failed to load records from Vercel KV, falling back to LocalStorage:", err);
+          }
         }
-      }
+        
+        // LocalStorage fallback
+        setIsCloudConnected(false);
+        const savedRecords = localStorage.getItem("fb_records");
+        if (savedRecords) {
+          try {
+            setRecords(JSON.parse(savedRecords));
+          } catch (e) {
+            console.error("Failed to parse local records.", e);
+          }
+        }
+      };
+
+      loadRecords();
 
       // Read parameter values preloaded from external bookmarklet click
       const params = new URLSearchParams(window.location.search);
@@ -381,11 +404,27 @@ export default function AppDashboard() {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const handleDeleteRecord = (id: string) => {
-    const confirmDelete = window.confirm("Are you sure you want to delete this captured argument from your local history?");
+  const handleDeleteRecord = async (id: string) => {
+    const confirmDelete = window.confirm(
+      isCloudConnected
+        ? "Are you sure you want to delete this captured argument from the cloud database?"
+        : "Are you sure you want to delete this captured argument from your local history?"
+    );
     if (!confirmDelete) return;
+
     const updated = records.filter((r) => r.id !== id);
     saveRecordsToLocalStorage(updated);
+
+    if (isCloudConnected) {
+      try {
+        const savedDocId = localStorage.getItem("fb_doc_id") || "";
+        await fetch(`/api/records?docId=${encodeURIComponent(savedDocId.trim())}&id=${encodeURIComponent(id)}`, {
+          method: "DELETE"
+        });
+      } catch (err) {
+        console.error("Failed to delete record from cloud database:", err);
+      }
+    }
   };
 
   const handleCategoryFilterToggle = (category: string) => {
@@ -419,8 +458,10 @@ export default function AppDashboard() {
           <span className="hidden sm:inline">SECURE INTELLECTUAL EVIDENCE ARCHIVE</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></span>
-          <span className="text-indigo-300 font-mono">STATUS: CLOUD ACTIVE</span>
+          <span className={`w-1.5 h-1.5 rounded-full ${isCloudConnected ? "bg-indigo-400" : "bg-amber-400"} animate-pulse`}></span>
+          <span className={`${isCloudConnected ? "text-indigo-300" : "text-amber-300"} font-mono`}>
+            {isCloudConnected ? "STATUS: CLOUD SYNCHRONIZED" : "STATUS: LOCAL ONLY (NO DB)"}
+          </span>
         </div>
       </div>
 

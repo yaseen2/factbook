@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenAI, Type } from "@google/genai";
 import { google } from "googleapis";
+import { kv } from "@vercel/kv";
 
 interface CommonTab {
   tabId?: string;
@@ -573,6 +574,31 @@ ${context || "No context provided."}
         status: "skipped",
         details: "Google Doc authorization details missing in client settings."
       }));
+    }
+
+    // 4. SAVE TO CLOUD LEDGER DATABASE IF KV IS ACTIVE AND A GOOGLE DOC ID IS PROVIDED
+    if (docId && !!process.env.KV_REST_API_URL) {
+      try {
+        const key = `factbook:records:${docId.trim()}`;
+        const newRecord = {
+          id: String(Date.now()),
+          timestamp: new Date().toLocaleString(),
+          originalText: text,
+          sourceUrl: sourceUrl?.trim() || undefined,
+          sourceTitle: sourceTitle?.trim() || undefined,
+          context: context?.trim() || undefined,
+          categories: matchedCategories,
+          formattedText: formattedOutputText,
+          modelUsed: modelToUse,
+          syncResults: syncResults
+        };
+
+        const existingRecords = (await kv.get<any[]>(key)) || [];
+        const updatedRecords = [newRecord, ...existingRecords];
+        await kv.set(key, updatedRecords);
+      } catch (kvError: any) {
+        console.warn("Vercel KV record caching bypassed safely:", kvError?.message || kvError);
+      }
     }
 
     return NextResponse.json({
