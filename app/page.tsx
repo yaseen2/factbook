@@ -223,10 +223,14 @@ export default function AppDashboard() {
             : "/api/records";
           const res = await fetch(url);
           const data = await res.json();
-          if (res.ok && data.success && data.isCloud) {
-            setRecords(data.records);
-            setIsCloudConnected(true);
-            return;
+          if (res.ok && data.success) {
+            if (data.isCloud) {
+              setRecords(data.records);
+              setIsCloudConnected(true);
+              return;
+            } else {
+              console.log("Database connection diagnostics:", data);
+            }
           }
         } catch (err) {
           console.warn("Failed to load records from Vercel KV, falling back to LocalStorage:", err);

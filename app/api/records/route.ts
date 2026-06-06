@@ -25,11 +25,15 @@ export async function GET(req: NextRequest) {
     }
 
     if (!isKvConfigured) {
+      const envKeys = Object.keys(process.env).filter(key => 
+        key.includes("REDIS") || key.includes("KV") || key.includes("STORAGE") || key.includes("DOC")
+      );
       // Return a status indicating KV is not configured, so the frontend knows to use local storage
       return NextResponse.json({ 
         success: true, 
         records: [], 
         isCloud: false,
+        envKeys,
         message: "Vercel KV/Redis is not configured. Falling back to local storage."
       });
     }
