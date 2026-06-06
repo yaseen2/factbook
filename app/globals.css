@@ -1,18 +1,17 @@
 @import "tailwindcss";
 
 @theme {
-  --color-bg-retro: #F9F9FB;
-  --color-ink-retro: #1E293B;
-  --color-accent-blue: #3730A3;
+  --color-bg-retro: #09090B;
+  --color-ink-retro: #F4F4F5;
+  --color-accent-blue: #2563EB;
   --font-serif-retro: "Georgia", "Merriweather", serif;
   --font-sans-retro: var(--font-sans), "Inter", "Helvetica Neue", Arial, sans-serif;
   --font-mono-retro: var(--font-mono), "JetBrains Mono", "Fira Code", monospace;
 }
 
-/* Custom styling for Modern Academic Workspace - Premium Dark Redesign */
 body {
-  background-color: #0F0E17 !important;
-  color: #F4F4F5 !important;
+  background-color: #09090B !important;
+  color: #FAFAFA !important;
   font-family: var(--font-sans), "Inter", sans-serif;
   margin: 0;
 }
@@ -26,68 +25,70 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #27273A;
+  background: #27272A;
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #3F3F5A;
+  background: #3F3F46;
 }
 
 /* Form Inputs and Textareas - pristine soft borders with focus-ring glow */
 .retro-input {
-  background: #151421;
-  border: 1px solid #2D2C42;
+  background: #18181F;
+  border: 1px solid #27272A;
   border-radius: 0.625rem;
   font-family: inherit;
-  font-size: 14px;
-  color: #F4F4F5;
+  font-size: 13px;
+  color: #FAFAFA;
   padding: 0.625rem 0.875rem;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 
 .retro-input:focus {
-  border-color: #6366F1;
+  border-color: #3B82F6;
   outline: none;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+  background: #1E1E26;
 }
 
 .retro-textarea {
-  background: #151421;
-  border: 1px solid #2D2C42;
+  background: #18181F;
+  border: 1px solid #27272A;
   border-radius: 0.625rem;
   font-family: inherit;
-  font-size: 14px;
-  color: #F4F4F5;
+  font-size: 13px;
+  color: #FAFAFA;
   padding: 0.75rem 0.875rem;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 
 .retro-textarea:focus {
-  border-color: #6366F1;
+  border-color: #3B82F6;
   outline: none;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+  background: #1E1E26;
 }
 
 /* Custom dynamic buttons with modern styling */
 .retro-button-navy {
-  background: #4F46E5;
+  background: linear-gradient(135deg, #2563EB 0%, #06B6D4 100%);
   color: #FFFFFF;
   font-weight: 600;
   border-radius: 0.625rem;
   font-family: inherit;
   text-transform: none;
   letter-spacing: normal;
-  border: 1px solid #574AE2;
+  border: 1px solid rgba(59, 130, 246, 0.4);
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 2px 4px rgba(79, 70, 229, 0.3);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
 }
 
 .retro-button-navy:hover {
-  background: #6366F1;
-  border-color: #6366F1;
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+  background: linear-gradient(135deg, #3B82F6 0%, #0891B2 100%);
+  border-color: rgba(96, 165, 250, 0.6);
+  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.25);
   transform: translateY(-1px);
 }
 
@@ -96,18 +97,18 @@ body {
 }
 
 .retro-button-white {
-  background: #1A1926;
-  color: #E4E4E7;
+  background: #18181B;
+  color: #D4D4D8;
   font-weight: 500;
   border-radius: 0.625rem;
-  border: 1px solid #2D2C42;
+  border: 1px solid #27272A;
   transition: all 0.2s ease-in-out;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 .retro-button-white:hover {
-  background: #222133;
-  border-color: #3F3E5E;
+  background: #27272A;
+  border-color: #3F3F46;
   color: #FFFFFF;
 }
 

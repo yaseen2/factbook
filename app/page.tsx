@@ -77,7 +77,7 @@ function renderFormattedText(text: string) {
   const parts = text.split(/\*\*([^*]+)\*\*/g);
   return parts.map((part, index) => {
     if (index % 2 === 1) {
-      return <strong key={index} className="font-extrabold text-indigo-300">{part}</strong>;
+      return <strong key={index} className="font-extrabold text-blue-300">{part}</strong>;
     }
     return part;
   });
@@ -157,8 +157,8 @@ function renderFormattedCard(text: string) {
       <div className="flex flex-col gap-3.5 mt-2">
         {/* Thesis Argument Section */}
         {cleanArgument && (
-          <div className="p-4 bg-indigo-950/20 border-l-[3.5px] border-indigo-500 rounded-r-xl rounded-l-xs space-y-1.5 shadow-sm hover:bg-indigo-950/35 transition duration-200">
-            <h4 className="text-[10px] font-mono font-bold text-indigo-400 uppercase tracking-widest flex items-center gap-1">
+          <div className="p-4 bg-blue-950/25 border-l-[3.5px] border-blue-500 rounded-r-xl rounded-l-xs space-y-1.5 shadow-sm hover:bg-[#1E1E26] transition duration-200">
+            <h4 className="text-[10px] font-mono font-bold text-blue-400 uppercase tracking-widest flex items-center gap-1">
               THE ARGUMENT
             </h4>
             <p className="text-xs md:text-[13px] leading-relaxed text-zinc-250 font-medium font-serif">
@@ -169,11 +169,11 @@ function renderFormattedCard(text: string) {
 
         {/* Supporting Evidence Card */}
         {cleanEvidence && (
-          <div className="p-4 bg-zinc-900/40 border border-zinc-800/80 rounded-xl space-y-1.5 shadow-xs hover:border-zinc-700 transition duration-200">
+          <div className="p-4 bg-zinc-900/40 border border-zinc-850 rounded-xl space-y-1.5 shadow-xs hover:border-zinc-750 transition duration-200">
             <h4 className="text-[10px] font-mono font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-1">
               THE EVIDENCE
             </h4>
-            <p className="text-xs md:text-[13px] leading-relaxed text-zinc-300 font-sans font-normal">
+            <p className="text-xs md:text-[13px] leading-relaxed text-zinc-350 font-sans font-normal">
               {cleanEvidence}
             </p>
           </div>
@@ -453,29 +453,29 @@ export default function AppDashboard() {
   });
 
   return (
-    <div className="flex-1 flex flex-col min-h-screen bg-[#0F0E17]">
+    <div className="flex-1 flex flex-col min-h-screen bg-[#09090B] text-zinc-200">
       
       {/* Top Professional Header Bar */}
-      <div className="bg-[#090810] border-b border-zinc-800/40 text-zinc-400 py-2 px-4 md:px-8 font-mono text-[10px] flex items-center justify-between select-none shadow-sm">
+      <div className="bg-[#040406] border-b border-zinc-900 text-zinc-500 py-2.5 px-4 md:px-8 font-mono text-[10px] flex justify-between items-center select-none shadow-sm">
         <div className="flex items-center gap-4">
-          <span className="text-indigo-400 font-semibold tracking-wider font-mono">LEXIS.DIGITAL</span>
-          <span className="opacity-30">|</span>
+          <span className="text-zinc-400 font-semibold tracking-wider font-mono">FACTBOOK.ACADEMICS</span>
+          <span className="opacity-20">|</span>
           <span className="hidden sm:inline">SECURE INTELLECTUAL EVIDENCE ARCHIVE</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className={`w-1.5 h-1.5 rounded-full ${isCloudConnected ? "bg-indigo-400" : "bg-amber-400"} animate-pulse`}></span>
-          <span className={`${isCloudConnected ? "text-indigo-300" : "text-amber-300"} font-mono`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${isCloudConnected ? "bg-blue-500" : "bg-amber-500"} animate-pulse`}></span>
+          <span className={`${isCloudConnected ? "text-blue-400" : "text-amber-400"} font-mono`}>
             {isCloudConnected ? "STATUS: CLOUD SYNCHRONIZED" : "STATUS: LOCAL ONLY (NO DB)"}
           </span>
         </div>
       </div>
 
       {/* Main Branding Header */}
-      <header className="border-b border-zinc-800/80 bg-[#12111A] p-5 md:p-6 shadow-md">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="max-w-7xl mx-auto w-full px-4 md:px-6 mt-6">
+        <header className="bg-[#121216] rounded-2xl border border-zinc-800/60 p-5 md:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 shadow-xl">
           <div className="space-y-1">
-            <h1 className="text-2xl md:text-3xl font-serif font-black text-transparent bg-clip-text bg-gradient-to-r from-zinc-100 via-zinc-200 to-indigo-400 flex items-center gap-2.5 tracking-tight">
-              <BookOpen className="w-7 h-7 text-indigo-400" />
+            <h1 className="text-2xl font-serif font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-zinc-100 to-blue-400 flex items-center gap-2.5 tracking-tight">
+              <BookOpen className="w-6 h-6 text-blue-400" />
               Scholar's Research Ledger
             </h1>
             <p className="text-xs text-zinc-400 font-sans max-w-3xl leading-relaxed">
@@ -485,28 +485,28 @@ export default function AppDashboard() {
 
           <Link
             href="/settings"
-            className="p-2.5 px-5 bg-zinc-900/60 hover:bg-zinc-800/80 border border-zinc-800 rounded-xl font-mono text-[10px] font-bold text-zinc-300 inline-flex items-center gap-2 transition-all shadow-md cursor-pointer hover:border-zinc-700 hover:text-white"
+            className="p-3 bg-zinc-900/60 hover:bg-zinc-850 border border-zinc-800 rounded-xl font-mono text-[10px] font-bold text-zinc-300 inline-flex items-center gap-2 transition-all shadow-sm cursor-pointer hover:border-zinc-700 hover:text-white"
             id="settings-link"
           >
             <Settings className="w-3.5 h-3.5 text-zinc-400" />
             WORKSPACE CREDENTIALS
           </Link>
-        </div>
-      </header>
+        </header>
+      </div>
 
       {/* Main Workspace Split Grid */}
       <main className="flex-1 grid grid-cols-1 lg:grid-cols-12 max-w-7xl w-full mx-auto p-4 md:p-6 gap-6">
         
         {/* Left Column (Input Workbench Pane) - 5/12 Cols */}
         <div className="lg:col-span-5 space-y-6">
-          <div className="bg-[#12111A] rounded-2xl border border-zinc-800/80 p-5 md:p-6 shadow-lg space-y-5">
+          <div className="bg-[#121216] rounded-2xl border border-zinc-800/60 p-5 md:p-6 shadow-xl space-y-5">
             
-            <div className="flex items-center justify-between border-b border-zinc-800/40 pb-3">
+            <div className="flex items-center justify-between border-b border-zinc-900 pb-3">
               <h2 className="font-serif text-zinc-200 font-bold text-base flex items-center gap-2">
-                <Database className="w-4.5 h-4.5 text-indigo-400" />
+                <Database className="w-4.5 h-4.5 text-blue-400" />
                 Capture Workstation
               </h2>
-              <span className="font-mono text-[9px] bg-indigo-950/40 text-indigo-400 py-0.5 px-2 rounded-md font-bold uppercase tracking-wider">WORKSPACE</span>
+              <span className="font-mono text-[9px] bg-blue-950/40 text-blue-400 py-0.5 px-2 rounded-md font-bold uppercase tracking-wider">WORKSPACE</span>
             </div>
 
             {/* Main Fields Form */}
@@ -540,7 +540,7 @@ export default function AppDashboard() {
                 onDragLeave={handleDrag}
                 onDrop={handleDrop}
                 className={`border border-dashed rounded-xl p-4 flex flex-col items-center justify-center text-center cursor-pointer transition-all ${
-                  dragActive ? "bg-indigo-950/40 border-indigo-500" : "bg-zinc-900/40 hover:bg-zinc-900/80 border-zinc-800"
+                  dragActive ? "bg-blue-950/20 border-blue-500/50" : "bg-[#18181F] hover:bg-[#1E1E26] border-zinc-800/80 hover:border-zinc-700"
                 }`}
                 id="upload-pdf-file-drop"
                 onClick={handleManualUploadClick}
@@ -553,7 +553,7 @@ export default function AppDashboard() {
                   accept=".pdf,.docx,.txt"
                   onChange={handleFileChange}
                 />
-                <Upload className="w-5 h-5 text-indigo-400 mb-1.5" />
+                <Upload className="w-5 h-5 text-blue-400 mb-1.5" />
                 <p className="text-xs font-semibold text-zinc-300">Drag &amp; drop study PDFs or Click to upload</p>
                 <p className="text-[10px] text-zinc-500 mt-0.5">Quickly extracts PDF contents into raw workstation format</p>
 
@@ -563,14 +563,14 @@ export default function AppDashboard() {
                   <button
                     type="button"
                     onClick={() => simulateFileExtraction("State_of_Dev_Report.pdf")}
-                    className="text-[9px] bg-zinc-900/60 font-semibold text-zinc-400 py-1 px-2.5 rounded-lg border border-zinc-800 hover:border-indigo-500 hover:text-indigo-300 transition"
+                    className="text-[9px] bg-[#121216] font-semibold text-zinc-400 py-1 px-2.5 rounded-lg border border-zinc-800 hover:border-blue-500/50 hover:text-blue-400 transition"
                   >
                     Dev_Report.pdf
                   </button>
                   <button
                     type="button"
                     onClick={() => simulateFileExtraction("Security_Whitepaper.pdf")}
-                    className="text-[9px] bg-zinc-900/60 font-semibold text-zinc-400 py-1 px-2.5 rounded-lg border border-zinc-800 hover:border-indigo-500 hover:text-indigo-300 transition"
+                    className="text-[9px] bg-[#121216] font-semibold text-zinc-400 py-1 px-2.5 rounded-lg border border-zinc-800 hover:border-blue-500/50 hover:text-blue-400 transition"
                   >
                     Security.pdf
                   </button>
@@ -630,9 +630,9 @@ export default function AppDashboard() {
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: "auto" }}
                     exit={{ opacity: 0, height: 0 }}
-                    className="p-3 bg-indigo-950/40 border border-indigo-800/60 text-indigo-200 font-medium text-xs flex items-center gap-2 rounded-xl"
+                    className="p-3 bg-blue-950/20 border border-blue-900/40 text-blue-300 font-medium text-xs flex items-center gap-2 rounded-xl"
                   >
-                    <Check className="w-4 h-4 text-indigo-400 shrink-0" />
+                    <Check className="w-4 h-4 text-blue-400 shrink-0" />
                     <span>{simulationMsg}</span>
                   </motion.div>
                 )}
@@ -641,9 +641,9 @@ export default function AppDashboard() {
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: "auto" }}
                     exit={{ opacity: 0, height: 0 }}
-                    className="p-3 bg-rose-950/20 border border-rose-900/60 text-rose-200 text-xs flex items-start gap-2 rounded-xl"
+                    className="p-3 bg-rose-950/20 border border-rose-900/50 text-rose-350 text-xs flex items-start gap-2 rounded-xl"
                   >
-                    <Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-rose-400" />
+                    <Info className="w-4 h-4 flex-shrink-0 mt-0.5 text-rose-450" />
                     <div>
                       <p className="font-bold">System Validation Warning</p>
                       <p className="mt-0.5 text-[11px] leading-relaxed text-zinc-400">{errorMsg}</p>
@@ -656,7 +656,7 @@ export default function AppDashboard() {
               <button
                 type="submit"
                 disabled={isProcessing}
-                className="retro-button-navy w-full py-3 flex items-center justify-center gap-2 cursor-pointer shadow-sm active:translate-y-0 disabled:bg-zinc-800 disabled:text-zinc-600 disabled:border-zinc-800"
+                className="retro-button-navy w-full py-3 flex items-center justify-center gap-2 cursor-pointer shadow-sm active:translate-y-0 disabled:bg-zinc-850 disabled:text-zinc-650 disabled:border-zinc-800/60"
                 id="process-capture-btn"
               >
                 {isProcessing ? (
@@ -674,7 +674,7 @@ export default function AppDashboard() {
 
             </form>
 
-            <div className="bg-zinc-900/45 border border-zinc-800/80 rounded-xl p-4 text-xs text-zinc-400 space-y-2 leading-relaxed">
+            <div className="bg-[#18181F] border border-zinc-800/60 rounded-xl p-4 text-xs text-zinc-400 space-y-2 leading-relaxed">
               <span className="font-serif font-bold text-zinc-200 block text-xs">Scholarly Formatting Standard:</span>
               <p>
                 Incoming snippets are parsed via private language models to isolate the precise thesis assertion, synthesize key supporting arguments, and draft structured factual evidence blocks.
@@ -687,14 +687,14 @@ export default function AppDashboard() {
         {/* Right Column (Academic Database Feed Panel) - 7/12 Cols */}
         <div className="lg:col-span-7 space-y-4 flex flex-col h-full">
           
-          <div className="bg-[#12111A] rounded-2xl border border-zinc-800/80 p-5 md:p-6 shadow-lg space-y-4 flex flex-col h-full">
+          <div className="bg-[#121216] rounded-2xl border border-zinc-800/60 p-5 md:p-6 shadow-xl space-y-4 flex flex-col h-full">
             
-            <div className="flex items-center justify-between border-b border-zinc-800/40 pb-3">
+            <div className="flex items-center justify-between border-b border-zinc-900 pb-3">
               <h2 className="font-serif text-zinc-200 font-bold text-base flex items-center gap-2">
-                <Layers className="w-4.5 h-4.5 text-indigo-400" />
+                <Layers className="w-4.5 h-4.5 text-blue-400" />
                 Evidence Ledger Index
               </h2>
-              <span className="font-mono text-[9px] bg-indigo-950/40 text-indigo-400 py-0.5 px-2 rounded-md font-bold uppercase tracking-wider">DATABASE</span>
+              <span className="font-mono text-[9px] bg-blue-950/40 text-blue-400 py-0.5 px-2 rounded-md font-bold uppercase tracking-wider">DATABASE</span>
             </div>
 
             {/* Filters / Search Bar */}
@@ -706,7 +706,7 @@ export default function AppDashboard() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search formatted essays, source publishers, or citations..."
-                  className="w-full bg-[#151421] border border-zinc-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-zinc-200 outline-none focus:bg-[#181728] focus:border-indigo-500 transition-all placeholder:text-zinc-500"
+                  className="w-full bg-[#18181F] border border-zinc-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-zinc-200 outline-none focus:bg-[#1E1E26] focus:border-blue-500/50 transition-all placeholder:text-zinc-650"
                 />
                 <Search className="w-4.5 h-4.5 text-zinc-500 absolute left-3.5 top-3.5 stroke-[2]" />
               </div>
@@ -726,8 +726,8 @@ export default function AppDashboard() {
                         onClick={() => handleCategoryFilterToggle(cat)}
                         className={`text-[10px] font-mono px-2.5 py-1 rounded-md border transition-all cursor-pointer ${
                           isActive 
-                            ? "bg-indigo-600 text-white border-indigo-500 font-bold shadow-md" 
-                            : "bg-[#161520]/60 text-zinc-400 border-zinc-800/80 hover:border-zinc-700 hover:text-zinc-200"
+                            ? "bg-blue-600 text-white border-blue-500 font-bold shadow-md" 
+                            : "bg-[#18181F] text-zinc-400 border border-zinc-800/80 hover:border-zinc-700 hover:text-zinc-200"
                         }`}
                       >
                         {cat}
@@ -750,7 +750,7 @@ export default function AppDashboard() {
             <div className="flex-1 overflow-y-auto min-h-[30rem] max-h-[46rem] space-y-4 pr-1">
               <AnimatePresence>
                 {filteredRecords.length === 0 ? (
-                  <div className="border border-dashed border-zinc-800 rounded-2xl p-12 text-center bg-zinc-900/10 my-4">
+                  <div className="border border-dashed border-zinc-800 rounded-2xl p-12 text-center bg-[#121216]/40 my-4">
                     <Database className="w-10 h-10 text-zinc-600 mx-auto mb-3" />
                     <p className="text-sm font-serif font-bold text-zinc-350">No structured citations available</p>
                     <p className="text-xs text-zinc-500 mt-1 max-w-xs mx-auto">
@@ -764,21 +764,21 @@ export default function AppDashboard() {
                       initial={{ opacity: 0, y: 15 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, x: -15 }}
-                      className="bg-[#151421] border border-zinc-800/60 rounded-xl p-4.5 shadow-sm hover:border-zinc-700 transition duration-200 space-y-3 block relative border-l-4 border-l-indigo-500"
+                      className="bg-[#18181F] border border-zinc-800/60 rounded-xl p-4.5 shadow-sm hover:border-zinc-700 transition duration-200 space-y-3 block relative border-l-4 border-l-blue-500"
                     >
                       {/* Record header banner */}
-                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800/50 pb-2.5 text-[11px] font-mono text-zinc-500">
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-900 pb-2.5 text-[11px] font-mono text-zinc-500">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="bg-indigo-950/40 text-indigo-300 border border-indigo-900/60 px-2 py-0.5 text-[9px] font-bold rounded-md uppercase">CARD #{rec.id.slice(-4)}</span>
+                          <span className="bg-blue-950/45 text-blue-300 border border-blue-900/60 px-2 py-0.5 text-[9px] font-bold rounded-md uppercase">CARD #{rec.id.slice(-4)}</span>
                           <span>{rec.timestamp}</span>
                           <span className="opacity-40 hidden sm:inline">•</span>
-                          <span className="text-indigo-400 font-bold hidden sm:inline">{rec.modelUsed}</span>
+                          <span className="text-blue-400 font-bold hidden sm:inline">{rec.modelUsed}</span>
                         </div>
                         
                         <div className="flex items-center gap-1.5">
                           <button
                             onClick={() => handleCopyText(rec.id, rec.formattedText)}
-                            className="p-1 text-zinc-500 hover:text-indigo-400 transition"
+                            className="p-1 text-zinc-500 hover:text-blue-400 transition"
                             title="Copy Citations"
                             id="copy-formatted-text-btn"
                           >
@@ -804,7 +804,7 @@ export default function AppDashboard() {
                       </div>
 
                       {/* Sync references and taxonomy */}
-                      <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-zinc-800/55">
+                      <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-zinc-900/65">
                         
                         {/* Identified Categories List */}
                         <div className="flex items-center gap-1.5 flex-wrap max-w-[65%]">
@@ -813,7 +813,7 @@ export default function AppDashboard() {
                             {rec.categories.map((c, i) => (
                               <span
                                 key={i}
-                                className="text-[9px] font-bold bg-indigo-950/40 text-indigo-300 px-2 py-0.5 rounded-md border border-indigo-900/60 uppercase font-mono"
+                                className="text-[9px] font-bold bg-blue-950/45 text-blue-300 px-2 py-0.5 rounded-md border border-blue-900/60 uppercase font-mono"
                               >
                                 {c}
                               </span>
@@ -869,9 +869,9 @@ export default function AppDashboard() {
 
                       {/* Original web contextual link */}
                       {rec.sourceTitle && (
-                        <div className="text-[10px] font-mono text-zinc-400 flex items-center justify-between gap-2 bg-zinc-900/60 p-2 border border-zinc-800/80 rounded-lg mt-2 font-medium">
+                        <div className="text-[10px] font-mono text-zinc-400 flex items-center justify-between gap-2 bg-[#121216] p-2 border border-zinc-800/60 rounded-lg mt-2 font-medium">
                           <span className="truncate flex items-center gap-1 text-zinc-400">
-                            <span className="w-1 h-1 bg-indigo-500 rounded-full"></span>
+                            <span className="w-1 h-1 bg-blue-500 rounded-full"></span>
                             Publisher: {rec.sourceTitle}
                           </span>
                           {rec.sourceUrl && rec.sourceUrl.startsWith("http") && (
@@ -879,7 +879,7 @@ export default function AppDashboard() {
                               href={rec.sourceUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-indigo-400 hover:text-indigo-300 hover:underline flex items-center gap-0.5 shrink-0"
+                              className="text-blue-400 hover:text-blue-300 hover:underline flex items-center gap-0.5 shrink-0"
                             >
                               Open Source <ExternalLink className="w-2.5 h-2.5" />
                             </a>
