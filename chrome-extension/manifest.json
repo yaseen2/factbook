@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "Scholar's Ledger Capture",
+  "version": "1.0",
+  "description": "Structure text clippings and send them to your Scholar's Research Ledger.",
+  "permissions": [
+    "contextMenus",
+    "storage",
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "http://localhost/*",
+    "https://*/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html"
+  }
+}

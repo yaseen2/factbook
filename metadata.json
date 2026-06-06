@@ -1,0 +1,6 @@
+{
+  "name": "Factbook Capturer",
+  "description": "CSS (Civil Superior Services) exam preparation study factbook with intelligent Gemini sorting and direct Google Docs API tab synchronization.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
