@@ -135,25 +135,12 @@ export default function SettingsPage() {
   };
 
   return (
-    <main className="flex-1 min-h-screen bg-[#09090B] text-zinc-200 pb-16">
+    <main className="flex-1 min-h-screen bg-transparent text-zinc-200 pb-16">
       
-      {/* Upper Premium Context Header */}
-      <div className="bg-[#040406] border-b border-zinc-900 text-zinc-500 py-2.5 px-4 md:px-8 font-mono text-[10px] flex justify-between items-center select-none shadow-sm">
-        <div className="flex items-center gap-4">
-          <span className="text-zinc-400 font-semibold tracking-wider font-mono">FACTBOOK.ACADEMICS</span>
-          <span className="opacity-20">|</span>
-          <span>CONFIGURATION CONTROL INTERFACE</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
-          <span className="text-blue-400 font-mono">LOCAL DATA SECURITY ACTIVE</span>
-        </div>
-      </div>
-
       <div className="max-w-5xl mx-auto px-4 md:px-8 mt-8 space-y-6">
         
         {/* Navigation & Title Block */}
-        <header className="bg-[#121216] rounded-2xl border border-zinc-800/60 p-5 md:p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4 shadow-xl">
+        <header className="premium-card p-5 md:p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4 shadow-xl">
           <div className="flex items-center gap-4">
             <Link
               href="/"
@@ -164,7 +151,7 @@ export default function SettingsPage() {
             </Link>
             <div>
               <p className="text-[10px] font-mono font-bold text-blue-400 uppercase tracking-widest">Workspace Dashboard</p>
-              <h1 className="text-xl md:text-2xl font-serif font-black text-white tracking-tight">System Settings</h1>
+              <h1 className="text-xl md:text-2xl font-sans font-black text-white tracking-tight">System Settings</h1>
             </div>
           </div>
           
@@ -203,7 +190,7 @@ export default function SettingsPage() {
           <div className="lg:col-span-7 space-y-6">
             
             {/* Section 1: AI Engine Configuration */}
-            <section className="bg-[#121216] rounded-2xl border border-zinc-800/60 p-5 md:p-6 space-y-5 shadow-lg">
+            <section className="premium-card p-5 md:p-6 space-y-5 shadow-lg">
               <div className="flex items-center gap-2 border-b border-zinc-900 pb-3">
                 <Sparkles className="w-4 h-4 text-blue-400" />
                 <h2 className="text-sm font-mono font-bold text-white uppercase tracking-wider">Gemini Academic Engine</h2>
@@ -305,7 +292,7 @@ export default function SettingsPage() {
             </section>
 
             {/* Section 2: Google Docs Sync Configuration */}
-            <section className="bg-[#121216] rounded-2xl border border-zinc-800/60 p-5 md:p-6 space-y-5 shadow-lg">
+            <section className="premium-card p-5 md:p-6 space-y-5 shadow-lg">
               <div className="flex items-center gap-2 border-b border-zinc-900 pb-3">
                 <FileText className="w-4.5 h-4.5 text-blue-400" />
                 <h2 className="text-sm font-mono font-bold text-white uppercase tracking-wider">Google Docs Synchronization</h2>
@@ -426,7 +413,7 @@ export default function SettingsPage() {
           <div className="lg:col-span-5 space-y-6">
             
             {/* Section 4: Chrome Extension Integration */}
-            <section className="bg-[#121216] rounded-2xl border border-zinc-800/60 p-5 md:p-6 space-y-4 shadow-lg">
+            <section className="premium-card p-5 md:p-6 space-y-4 shadow-lg">
               <div className="flex items-center gap-2 border-b border-zinc-900 pb-3">
                 <Chrome className="w-4 h-4 text-blue-400" />
                 <h2 className="text-sm font-mono font-bold text-white uppercase tracking-wider">Chrome Extension</h2>

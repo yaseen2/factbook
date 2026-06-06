@@ -10,10 +10,23 @@
 }
 
 body {
-  background-color: #09090B !important;
+  background-color: #050508 !important;
+  background-image: 
+    radial-gradient(circle at 10% 20%, rgba(14, 116, 144, 0.15) 0%, transparent 45%),
+    radial-gradient(circle at 90% 80%, rgba(217, 119, 6, 0.08) 0%, transparent 45%) !important;
+  background-attachment: fixed !important;
   color: #FAFAFA !important;
   font-family: var(--font-sans), "Inter", sans-serif;
   margin: 0;
+}
+
+/* Premium Card subtle gradient box */
+.premium-card {
+  background: linear-gradient(135deg, rgba(22, 22, 26, 0.7) 0%, rgba(13, 13, 17, 0.9) 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.03) !important;
+  backdrop-filter: blur(16px);
+  border-radius: 1rem;
 }
 
 /* Scrollbar customization */

@@ -147,9 +147,9 @@ function renderFormattedCard(text: string) {
   return (
     <div className="space-y-4">
       {/* Elegantly styled Title block */}
-      <div className="flex items-start gap-2 pt-1 border-b border-zinc-800/60 pb-3">
+      <div className="flex items-start gap-2 pt-1 border-b border-zinc-850 pb-3">
         <span className="text-lg leading-none select-none shrink-0" role="img" aria-label="pin">📌</span>
-        <h3 className="font-serif font-black text-zinc-100 text-sm md:text-base tracking-tight leading-snug">
+        <h3 className="font-sans font-extrabold text-zinc-100 text-sm md:text-base tracking-tight leading-snug">
           {titleLine.replace(/^📌\s*/, "")}
         </h3>
       </div>
@@ -161,7 +161,7 @@ function renderFormattedCard(text: string) {
             <h4 className="text-[10px] font-mono font-bold text-blue-400 uppercase tracking-widest flex items-center gap-1">
               THE ARGUMENT
             </h4>
-            <p className="text-xs md:text-[13px] leading-relaxed text-zinc-250 font-medium font-serif">
+            <p className="text-xs md:text-[13px] leading-relaxed text-zinc-250 font-medium font-sans">
               {cleanArgument}
             </p>
           </div>
@@ -453,30 +453,19 @@ export default function AppDashboard() {
   });
 
   return (
-    <div className="flex-1 flex flex-col min-h-screen bg-[#09090B] text-zinc-200">
+    <div className="flex-1 flex flex-col min-h-screen bg-transparent text-zinc-200">
       
-      {/* Top Professional Header Bar */}
-      <div className="bg-[#040406] border-b border-zinc-900 text-zinc-500 py-2.5 px-4 md:px-8 font-mono text-[10px] flex justify-between items-center select-none shadow-sm">
-        <div className="flex items-center gap-4">
-          <span className="text-zinc-400 font-semibold tracking-wider font-mono">FACTBOOK.ACADEMICS</span>
-          <span className="opacity-20">|</span>
-          <span className="hidden sm:inline">SECURE INTELLECTUAL EVIDENCE ARCHIVE</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className={`w-1.5 h-1.5 rounded-full ${isCloudConnected ? "bg-blue-500" : "bg-amber-500"} animate-pulse`}></span>
-          <span className={`${isCloudConnected ? "text-blue-400" : "text-amber-400"} font-mono`}>
-            {isCloudConnected ? "STATUS: CLOUD SYNCHRONIZED" : "STATUS: LOCAL ONLY (NO DB)"}
-          </span>
-        </div>
-      </div>
-
       {/* Main Branding Header */}
       <div className="max-w-7xl mx-auto w-full px-4 md:px-6 mt-6">
-        <header className="bg-[#121216] rounded-2xl border border-zinc-800/60 p-5 md:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 shadow-xl">
-          <div className="space-y-1">
-            <h1 className="text-2xl font-serif font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-zinc-100 to-blue-400 flex items-center gap-2.5 tracking-tight">
-              <BookOpen className="w-6 h-6 text-blue-400" />
+        <header className="premium-card p-5 md:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 shadow-xl">
+          <div className="space-y-1.5">
+            <h1 className="text-2xl font-sans font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-zinc-100 to-blue-400 flex items-center flex-wrap gap-2.5 tracking-tight">
+              <BookOpen className="w-6 h-6 text-blue-400 shrink-0" />
               Scholar's Research Ledger
+              <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[9px] font-mono font-bold tracking-wider ${isCloudConnected ? "bg-blue-950/45 text-blue-400 border border-blue-900/50" : "bg-amber-950/35 text-amber-400 border border-amber-900/30"}`}>
+                <span className={`w-1 h-1 rounded-full ${isCloudConnected ? "bg-blue-500" : "bg-amber-500"} animate-pulse`}></span>
+                {isCloudConnected ? "CLOUD" : "LOCAL"}
+              </span>
             </h1>
             <p className="text-xs text-zinc-400 font-sans max-w-3xl leading-relaxed">
               Structure unstructured research, text clippings, policy drafts, and study material into refined synthesis cards. Automatically categorize evidence indices and synchronize with document workspaces.
@@ -499,10 +488,10 @@ export default function AppDashboard() {
         
         {/* Left Column (Input Workbench Pane) - 5/12 Cols */}
         <div className="lg:col-span-5 space-y-6">
-          <div className="bg-[#121216] rounded-2xl border border-zinc-800/60 p-5 md:p-6 shadow-xl space-y-5">
+          <div className="premium-card p-5 md:p-6 shadow-xl space-y-5">
             
             <div className="flex items-center justify-between border-b border-zinc-900 pb-3">
-              <h2 className="font-serif text-zinc-200 font-bold text-base flex items-center gap-2">
+              <h2 className="font-sans text-zinc-200 font-bold text-base flex items-center gap-2">
                 <Database className="w-4.5 h-4.5 text-blue-400" />
                 Capture Workstation
               </h2>
@@ -533,49 +522,14 @@ export default function AppDashboard() {
                 />
               </div>
 
-              {/* Upload Dropzone */}
-              <div 
-                onDragEnter={handleDrag}
-                onDragOver={handleDrag}
-                onDragLeave={handleDrag}
-                onDrop={handleDrop}
-                className={`border border-dashed rounded-xl p-4 flex flex-col items-center justify-center text-center cursor-pointer transition-all ${
-                  dragActive ? "bg-blue-950/20 border-blue-500/50" : "bg-[#18181F] hover:bg-[#1E1E26] border-zinc-800/80 hover:border-zinc-700"
-                }`}
-                id="upload-pdf-file-drop"
-                onClick={handleManualUploadClick}
-              >
-                <input 
-                  ref={fileInputRef}
-                  type="file" 
-                  id="file-upload" 
-                  className="hidden" 
-                  accept=".pdf,.docx,.txt"
-                  onChange={handleFileChange}
-                />
-                <Upload className="w-5 h-5 text-blue-400 mb-1.5" />
-                <p className="text-xs font-semibold text-zinc-300">Drag &amp; drop study PDFs or Click to upload</p>
-                <p className="text-[10px] text-zinc-500 mt-0.5">Quickly extracts PDF contents into raw workstation format</p>
-
-                {/* Simulator Pillbox */}
-                <div className="flex flex-wrap gap-1 justify-center mt-3 pt-3 border-t border-dashed border-zinc-800 w-full" onClick={(e) => e.stopPropagation()}>
-                  <p className="text-[9px] font-mono text-zinc-500 w-full mb-1">DEMO FILE CLIPS:</p>
-                  <button
-                    type="button"
-                    onClick={() => simulateFileExtraction("State_of_Dev_Report.pdf")}
-                    className="text-[9px] bg-[#121216] font-semibold text-zinc-400 py-1 px-2.5 rounded-lg border border-zinc-800 hover:border-blue-500/50 hover:text-blue-400 transition"
-                  >
-                    Dev_Report.pdf
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => simulateFileExtraction("Security_Whitepaper.pdf")}
-                    className="text-[9px] bg-[#121216] font-semibold text-zinc-400 py-1 px-2.5 rounded-lg border border-zinc-800 hover:border-blue-500/50 hover:text-blue-400 transition"
-                  >
-                    Security.pdf
-                  </button>
-                </div>
-              </div>
+              <input 
+                ref={fileInputRef}
+                type="file" 
+                id="file-upload" 
+                className="hidden" 
+                accept=".pdf,.docx,.txt"
+                onChange={handleFileChange}
+              />
 
               {/* Source metadata rows */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
@@ -673,24 +627,16 @@ export default function AppDashboard() {
               </button>
 
             </form>
-
-            <div className="bg-[#18181F] border border-zinc-800/60 rounded-xl p-4 text-xs text-zinc-400 space-y-2 leading-relaxed">
-              <span className="font-serif font-bold text-zinc-200 block text-xs">Scholarly Formatting Standard:</span>
-              <p>
-                Incoming snippets are parsed via private language models to isolate the precise thesis assertion, synthesize key supporting arguments, and draft structured factual evidence blocks.
-              </p>
-            </div>
-
           </div>
         </div>
 
         {/* Right Column (Academic Database Feed Panel) - 7/12 Cols */}
         <div className="lg:col-span-7 space-y-4 flex flex-col h-full">
           
-          <div className="bg-[#121216] rounded-2xl border border-zinc-800/60 p-5 md:p-6 shadow-xl space-y-4 flex flex-col h-full">
+          <div className="premium-card p-5 md:p-6 shadow-xl space-y-4 flex flex-col h-full">
             
             <div className="flex items-center justify-between border-b border-zinc-900 pb-3">
-              <h2 className="font-serif text-zinc-200 font-bold text-base flex items-center gap-2">
+              <h2 className="font-sans text-zinc-200 font-bold text-base flex items-center gap-2">
                 <Layers className="w-4.5 h-4.5 text-blue-400" />
                 Evidence Ledger Index
               </h2>

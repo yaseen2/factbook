@@ -1,5 +1,11 @@
+import { Inter } from "next/font/google";
 import "./globals.css";
 import React from "react";
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-sans",
+});
 
 export const metadata = {
   title: "Scholarly Synthesis Ledger",
@@ -13,9 +19,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="h-full bg-[#0B0A10]">
-      <body className="min-h-screen bg-[#0B0A10] text-[#E4E4E7] font-sans selection:bg-indigo-500/30 antialiased p-0 md:p-3">
-        <div className="min-h-[calc(100vh-1.5rem)] md:rounded-2xl md:border border-zinc-800/80 bg-[#0F0E17] flex flex-col relative overflow-x-hidden shadow-2xl">
+    <html lang="en" className={`${inter.variable} h-full bg-[#050508]`}>
+      <body className="min-h-screen bg-[#050508] text-[#E4E4E7] font-sans selection:bg-blue-500/30 antialiased p-0">
+        <div className="min-h-screen flex flex-col relative overflow-x-hidden">
           {children}
         </div>
       </body>
