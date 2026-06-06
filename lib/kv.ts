@@ -1,39 +1,59 @@
-import { createClient } from "@vercel/kv";
+import Redis from "ioredis";
 
-// Auto-parse standard TCP REDIS_URL if provided by Vercel Upstash Redis integration
-let parsedUrl = "";
-let parsedToken = "";
+export const isKvConfigured = !!process.env.REDIS_URL;
 
-if (process.env.REDIS_URL) {
-  try {
-    const rawUrl = process.env.REDIS_URL.trim();
-    // Parse protocol properly (handles redis:// and rediss://)
-    const u = new URL(rawUrl);
-    parsedUrl = `https://${u.hostname}`;
-    parsedToken = u.password;
-  } catch (e) {
-    console.error("Failed to parse REDIS_URL dynamically for REST connection:", e);
+// Lazy-initialize client to prevent compile-time connection hangs and warnings
+let redisInstance: Redis | null = null;
+
+function getRedis() {
+  if (!redisInstance && process.env.REDIS_URL) {
+    try {
+      const rawUrl = process.env.REDIS_URL.trim();
+      redisInstance = new Redis(rawUrl, {
+        // Optimize connection for serverless/edge environments
+        maxRetriesPerRequest: 1,
+        connectTimeout: 5000,
+        lazyConnect: true
+      });
+    } catch (e) {
+      console.error("Failed to initialize Redis client:", e);
+    }
   }
+  return redisInstance;
 }
 
-export const isKvConfigured = !!(
-  process.env.KV_REST_API_URL || 
-  process.env.REDIS_REST_API_URL ||
-  process.env.STORAGE_REST_API_URL ||
-  (parsedUrl && parsedToken)
-);
-
-export const kv = createClient({
-  url: 
-    process.env.KV_REST_API_URL || 
-    process.env.REDIS_REST_API_URL || 
-    process.env.STORAGE_REST_API_URL || 
-    parsedUrl || 
-    "",
-  token: 
-    process.env.KV_REST_API_TOKEN || 
-    process.env.REDIS_REST_API_TOKEN || 
-    process.env.STORAGE_REST_API_TOKEN || 
-    parsedToken || 
-    "",
-});
+// Wrapper to mimic the @vercel/kv API (auto stringify/parse JSON objects)
+export const kv = {
+  get: async <T = any>(key: string): Promise<T | null> => {
+    const client = getRedis();
+    if (!client) return null;
+    
+    // Ensure we are connected
+    if (client.status === "wait") {
+      await client.connect();
+    }
+    
+    const value = await client.get(key);
+    if (!value) return null;
+    
+    try {
+      return JSON.parse(value) as T;
+    } catch (e) {
+      return value as unknown as T;
+    }
+  },
+  
+  set: async (key: string, value: any): Promise<string> => {
+    const client = getRedis();
+    if (!client) throw new Error("Redis client not initialized");
+    
+    // Ensure we are connected
+    if (client.status === "wait") {
+      await client.connect();
+    }
+    
+    const stringValue = typeof value === "string" ? value : JSON.stringify(value);
+    const result = await client.set(key, stringValue);
+    return result || "OK";
+  }
+};
