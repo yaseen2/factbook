@@ -1,0 +1,6 @@
+{
+  "name": "Factbook Capturer",
+  "description": "CSS exam studies card quick capture, processing, and sync bridge to custom Vercel backend integration.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
