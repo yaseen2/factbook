@@ -34,12 +34,16 @@ import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import android.net.Network
+import android.net.NetworkRequest
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
 import java.util.regex.Pattern
 
 class ShareActivity : ComponentActivity() {
     private val client = OkHttpClient()
+    private val isOnlineState = mutableStateOf(false)
+    private var networkCallback: ConnectivityManager.NetworkCallback? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -69,7 +73,7 @@ class ShareActivity : ComponentActivity() {
             }
         }
 
-        val isOnline = isNetworkAvailable()
+        registerNetworkCallback()
 
         setContent {
             FactbookTheme {
@@ -82,7 +86,7 @@ class ShareActivity : ComponentActivity() {
                     contentAlignment = Alignment.Center
                 ) {
                     ShareScreen(
-                        isOnline = isOnline,
+                        isOnline = isOnlineState.value,
                         initialText = sharedText,
                         initialUrl = sharedUrl,
                         initialTitle = sharedTitle,
@@ -92,6 +96,62 @@ class ShareActivity : ComponentActivity() {
                         onCancel = { finish() }
                     )
                 }
+            }
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        unregisterNetworkCallback()
+    }
+
+    private fun registerNetworkCallback() {
+        val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        isOnlineState.value = isNetworkAvailable()
+
+        val request = NetworkRequest.Builder()
+            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+            .build()
+
+        val callback = object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: Network) {
+                runOnUiThread {
+                    isOnlineState.value = true
+                }
+            }
+
+            override fun onLost(network: Network) {
+                runOnUiThread {
+                    isOnlineState.value = isNetworkAvailable()
+                }
+            }
+
+            override fun onCapabilitiesChanged(
+                network: Network,
+                networkCapabilities: NetworkCapabilities
+            ) {
+                val hasInternet = networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                runOnUiThread {
+                    isOnlineState.value = hasInternet
+                }
+            }
+        }
+
+        try {
+            connectivityManager.registerNetworkCallback(request, callback)
+            networkCallback = callback
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    private fun unregisterNetworkCallback() {
+        networkCallback?.let {
+            val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            try {
+                connectivityManager.unregisterNetworkCallback(it)
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
     }

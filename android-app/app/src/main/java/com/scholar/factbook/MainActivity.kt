@@ -32,6 +32,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import android.net.Network
+import android.net.NetworkRequest
+import androidx.compose.ui.text.style.TextOverflow
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -42,15 +45,20 @@ class MainActivity : ComponentActivity() {
     private val client = OkHttpClient()
     private val offlineFactStore by lazy { OfflineFactStore(this) }
     private val offlineFactsState = mutableStateOf<List<OfflineFact>>(emptyList())
+    private val isOnlineState = mutableStateOf(false)
+    private val vercelUrlState = mutableStateOf("")
+    private val syncingItemIdState = mutableStateOf<String?>(null)
+    private var networkCallback: ConnectivityManager.NetworkCallback? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         // Load saved Vercel URL from SharedPreferences
         val sharedPref = getSharedPreferences("factbook_prefs", Context.MODE_PRIVATE)
-        val savedVercelUrl = sharedPref.getString("vercel_url", "") ?: ""
+        vercelUrlState.value = sharedPref.getString("vercel_url", "") ?: ""
 
         offlineFactsState.value = offlineFactStore.getFacts()
+        registerNetworkCallback()
 
         setContent {
             FactbookTheme {
@@ -58,15 +66,14 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = Color.Transparent
                 ) {
-                    var isSyncing by remember { mutableStateOf(false) }
-
                     MainScreen(
-                        initialVercelUrl = savedVercelUrl,
+                        vercelUrl = vercelUrlState.value,
                         offlineFacts = offlineFactsState.value,
-                        isOnline = isNetworkAvailable(),
-                        isSyncing = isSyncing,
+                        isOnline = isOnlineState.value,
+                        syncingItemId = syncingItemIdState.value,
                         onSaveVercelUrl = { url ->
                             sharedPref.edit().putString("vercel_url", url).apply()
+                            vercelUrlState.value = url
                             Toast.makeText(this, "Vercel Workspace URL Saved", Toast.LENGTH_SHORT).show()
                         },
                         onSubmit = { vercelUrl, text, sourceUrl, sourceTitle, contextRemarks, onFinish ->
@@ -79,18 +86,23 @@ class MainActivity : ComponentActivity() {
                                 }
                             )
                         },
-                        onSyncClick = {
-                            isSyncing = true
-                            syncOfflineFacts(savedVercelUrl,
+                        onSyncSingleClick = { fact ->
+                            syncingItemIdState.value = fact.id
+                            syncThisFact(vercelUrlState.value, fact,
                                 onSuccess = {
-                                    isSyncing = false
-                                    Toast.makeText(this, "Sync Complete: All facts uploaded!", Toast.LENGTH_LONG).show()
+                                    syncingItemIdState.value = null
+                                    Toast.makeText(this, "Synced successfully!", Toast.LENGTH_SHORT).show()
                                 },
                                 onFailure = { errorMsg ->
-                                    isSyncing = false
-                                    Toast.makeText(this, errorMsg, Toast.LENGTH_LONG).show()
+                                    syncingItemIdState.value = null
+                                    Toast.makeText(this, "Sync failed: $errorMsg", Toast.LENGTH_LONG).show()
                                 }
                             )
+                        },
+                        onDeleteClick = { id ->
+                            offlineFactStore.removeFact(id)
+                            offlineFactsState.value = offlineFactStore.getFacts()
+                            Toast.makeText(this, "Item deleted from queue", Toast.LENGTH_SHORT).show()
                         }
                     )
                 }
@@ -102,6 +114,11 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         // Refresh offline queue facts list when app is focused/resumed
         offlineFactsState.value = offlineFactStore.getFacts()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        unregisterNetworkCallback()
     }
 
     private fun isNetworkAvailable(): Boolean {
@@ -221,8 +238,60 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun syncOfflineFacts(
+    private fun registerNetworkCallback() {
+        val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        isOnlineState.value = isNetworkAvailable()
+
+        val request = NetworkRequest.Builder()
+            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+            .build()
+
+        val callback = object : ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: Network) {
+                runOnUiThread {
+                    isOnlineState.value = true
+                }
+            }
+
+            override fun onLost(network: Network) {
+                runOnUiThread {
+                    isOnlineState.value = isNetworkAvailable()
+                }
+            }
+
+            override fun onCapabilitiesChanged(
+                network: Network,
+                networkCapabilities: NetworkCapabilities
+            ) {
+                val hasInternet = networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                runOnUiThread {
+                    isOnlineState.value = hasInternet
+                }
+            }
+        }
+
+        try {
+            connectivityManager.registerNetworkCallback(request, callback)
+            networkCallback = callback
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    private fun unregisterNetworkCallback() {
+        networkCallback?.let {
+            val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            try {
+                connectivityManager.unregisterNetworkCallback(it)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    private fun syncThisFact(
         vercelUrl: String,
+        fact: OfflineFact,
         onSuccess: () -> Unit,
         onFailure: (String) -> Unit
     ) {
@@ -232,63 +301,43 @@ class MainActivity : ComponentActivity() {
             return
         }
 
-        val facts = offlineFactStore.getFacts()
-        if (facts.isEmpty()) {
-            onSuccess()
-            return
-        }
-
-        if (!isNetworkAvailable()) {
+        if (!isOnlineState.value) {
             onFailure("Internet connection unavailable")
             return
         }
 
+        val endpoint = "$cleanUrl/api/capture"
+        val json = JsonObject().apply {
+            addProperty("id", fact.id)
+            addProperty("text", fact.text)
+            if (fact.sourceUrl.isNotEmpty()) addProperty("sourceUrl", fact.sourceUrl)
+            if (fact.sourceTitle.isNotEmpty()) addProperty("sourceTitle", fact.sourceTitle)
+            if (fact.context.isNotEmpty()) addProperty("context", fact.context)
+        }
+
+        val requestBody = json.toString().toRequestBody("application/json; charset=utf-8".toMediaType())
+        val request = Request.Builder()
+            .url(endpoint)
+            .post(requestBody)
+            .build()
+
         CoroutineScope(Dispatchers.IO).launch {
-            var successCount = 0
-            var failCount = 0
-            var lastError = ""
-
-            for (fact in facts) {
-                // Introduce a 2-second rate-limiting delay between requests
-                kotlinx.coroutines.delay(2000)
-
-                val endpoint = "$cleanUrl/api/capture"
-                val json = JsonObject().apply {
-                    addProperty("id", fact.id) // Send current fact ID for server-side deduplication check
-                    addProperty("text", fact.text)
-                    if (fact.sourceUrl.isNotEmpty()) addProperty("sourceUrl", fact.sourceUrl)
-                    if (fact.sourceTitle.isNotEmpty()) addProperty("sourceTitle", fact.sourceTitle)
-                    if (fact.context.isNotEmpty()) addProperty("context", fact.context)
-                }
-
-                val requestBody = json.toString().toRequestBody("application/json; charset=utf-8".toMediaType())
-                val request = Request.Builder()
-                    .url(endpoint)
-                    .post(requestBody)
-                    .build()
-
-                try {
-                    val response = client.newCall(request).execute()
-                    val responseBody = response.body?.string()
+            try {
+                val response = client.newCall(request).execute()
+                val responseBody = response.body?.string()
+                withContext(Dispatchers.Main) {
                     if (response.isSuccessful) {
                         offlineFactStore.removeFact(fact.id)
-                        successCount++
+                        offlineFactsState.value = offlineFactStore.getFacts()
+                        onSuccess()
                     } else {
-                        failCount++
-                        lastError = getErrorMessage(responseBody)
+                        val errorMsg = getErrorMessage(responseBody)
+                        onFailure(errorMsg)
                     }
-                } catch (e: IOException) {
-                    failCount++
-                    lastError = e.message ?: "Connection error"
                 }
-            }
-
-            withContext(Dispatchers.Main) {
-                offlineFactsState.value = offlineFactStore.getFacts()
-                if (failCount == 0) {
-                    onSuccess()
-                } else {
-                    onFailure("Uploaded $successCount. Failed $failCount. Error: $lastError")
+            } catch (e: IOException) {
+                withContext(Dispatchers.Main) {
+                    onFailure(e.message ?: "Connection error")
                 }
             }
         }
@@ -362,21 +411,22 @@ fun PulsatingConnectionStatus(isOnline: Boolean) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
-    initialVercelUrl: String,
+    vercelUrl: String,
     offlineFacts: List<OfflineFact>,
     isOnline: Boolean,
-    isSyncing: Boolean,
+    syncingItemId: String?,
     onSaveVercelUrl: (String) -> Unit,
     onSubmit: (String, String, String, String, String, () -> Unit) -> Unit,
-    onSyncClick: () -> Unit
+    onSyncSingleClick: (OfflineFact) -> Unit,
+    onDeleteClick: (String) -> Unit
 ) {
-    var vercelUrl by remember { mutableStateOf(initialVercelUrl) }
+    var vercelUrlInput by remember(vercelUrl) { mutableStateOf(vercelUrl) }
     var textInput by remember { mutableStateOf("") }
     var sourceUrlInput by remember { mutableStateOf("") }
     var sourceTitleInput by remember { mutableStateOf("") }
     var contextInput by remember { mutableStateOf("") }
 
-    var showSettings by remember { mutableStateOf(initialVercelUrl.isEmpty() || initialVercelUrl.contains("your-app")) }
+    var showSettings by remember { mutableStateOf(vercelUrl.isEmpty() || vercelUrl.contains("your-app")) }
     var isSubmitting by remember { mutableStateOf(false) }
 
     val deepSpaceGradient = Brush.verticalGradient(
@@ -470,7 +520,7 @@ fun MainScreen(
                         ) {
                             Column(
                                 modifier = Modifier.padding(18.dp),
-                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
@@ -508,54 +558,81 @@ fun MainScreen(
                                 }
 
                                 Text(
-                                    text = "Unsynchronized clippings are cached locally. Connect online to send these items to your ledger.",
+                                    text = "Unsynchronized clippings are cached locally. Sync or delete items individually below.",
                                     color = Color(0xFFCBD5E1),
                                     fontSize = 12.sp,
                                     lineHeight = 16.sp
                                 )
 
-                                Button(
-                                    onClick = onSyncClick,
-                                    enabled = !isSyncing,
-                                    modifier = Modifier.fillMaxWidth(),
-                                    shape = RoundedCornerShape(12.dp),
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = Color.Transparent,
-                                        disabledContainerColor = Color(0x331E1E26)
-                                    ),
-                                    contentPadding = PaddingValues()
-                                ) {
-                                    Box(
+                                offlineFacts.forEach { fact ->
+                                    Card(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .background(
-                                                brush = if (isOnline) {
-                                                    Brush.horizontalGradient(
-                                                        colors = listOf(Color(0xFFD97706), Color(0xFFF59E0B))
-                                                    )
-                                                } else {
-                                                    Brush.horizontalGradient(
-                                                        colors = listOf(Color(0x33D97706), Color(0x33F59E0B))
-                                                    )
-                                                },
-                                                shape = RoundedCornerShape(12.dp)
-                                            )
-                                            .padding(vertical = 12.dp),
-                                        contentAlignment = Alignment.Center
+                                            .border(1.dp, Color(0x1AFFFFFF), RoundedCornerShape(12.dp)),
+                                        colors = CardDefaults.cardColors(containerColor = Color(0xFF0F1123)),
+                                        shape = RoundedCornerShape(12.dp)
                                     ) {
-                                        if (isSyncing) {
-                                            CircularProgressIndicator(
-                                                modifier = Modifier.size(18.dp),
-                                                color = Color.White,
-                                                strokeWidth = 2.dp
-                                            )
-                                        } else {
+                                        Column(
+                                            modifier = Modifier.padding(12.dp),
+                                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
                                             Text(
-                                                text = if (isOnline) "Sync ${offlineFacts.size} Items Now" else "Device Offline (Connect to Sync)",
-                                                fontWeight = FontWeight.Bold,
-                                                color = if (isOnline) Color.White else Color(0xFF94A3B8),
-                                                fontSize = 13.sp
+                                                text = fact.text,
+                                                color = Color.White,
+                                                fontSize = 13.sp,
+                                                maxLines = 3,
+                                                overflow = TextOverflow.Ellipsis
                                             )
+
+                                            if (fact.sourceTitle.isNotEmpty() || fact.sourceUrl.isNotEmpty()) {
+                                                val sourceText = listOfNotNull(
+                                                    fact.sourceTitle.takeIf { it.isNotEmpty() },
+                                                    fact.sourceUrl.takeIf { it.isNotEmpty() }
+                                                ).joinToString(" - ")
+                                                Text(
+                                                    text = sourceText,
+                                                    color = Color(0xFF94A3B8),
+                                                    fontSize = 11.sp,
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis
+                                                )
+                                            }
+
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.End,
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                TextButton(
+                                                    onClick = { onDeleteClick(fact.id) },
+                                                    colors = ButtonDefaults.textButtonColors(contentColor = Color(0xFFEF4444))
+                                                ) {
+                                                    Text("Delete", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                                }
+
+                                                Spacer(modifier = Modifier.width(8.dp))
+
+                                                Button(
+                                                    onClick = { onSyncSingleClick(fact) },
+                                                    enabled = isOnline && (syncingItemId != fact.id),
+                                                    colors = ButtonDefaults.buttonColors(
+                                                        containerColor = Color(0xFF3B82F6),
+                                                        disabledContainerColor = Color(0xFF1E1E26)
+                                                    ),
+                                                    shape = RoundedCornerShape(8.dp),
+                                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                                                ) {
+                                                    if (syncingItemId == fact.id) {
+                                                        CircularProgressIndicator(
+                                                            modifier = Modifier.size(14.dp),
+                                                            color = Color.White,
+                                                            strokeWidth = 1.5.dp
+                                                        )
+                                                    } else {
+                                                        Text("Sync", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                                    }
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -586,8 +663,8 @@ fun MainScreen(
                                 )
 
                                 OutlinedTextField(
-                                    value = vercelUrl,
-                                    onValueChange = { vercelUrl = it },
+                                    value = vercelUrlInput,
+                                    onValueChange = { vercelUrlInput = it },
                                     label = { Text("Vercel App Domain Link", color = Color(0xFF94A3B8), fontSize = 12.sp) },
                                     placeholder = { Text("https://your-deployment.vercel.app") },
                                     modifier = Modifier.fillMaxWidth(),
@@ -606,7 +683,7 @@ fun MainScreen(
 
                                 Button(
                                     onClick = {
-                                        onSaveVercelUrl(vercelUrl)
+                                        onSaveVercelUrl(vercelUrlInput)
                                         showSettings = false
                                     },
                                     modifier = Modifier.fillMaxWidth(),
@@ -731,7 +808,7 @@ fun MainScreen(
                                 Button(
                                     onClick = {
                                         isSubmitting = true
-                                        onSubmit(vercelUrl, textInput, sourceUrlInput, sourceTitleInput, contextInput) {
+                                        onSubmit(vercelUrlInput, textInput, sourceUrlInput, sourceTitleInput, contextInput) {
                                             isSubmitting = false
                                             textInput = ""
                                             sourceUrlInput = ""
