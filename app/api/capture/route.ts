@@ -262,7 +262,7 @@ async function executeGeminiWithFallback(
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { text, sourceUrl, sourceTitle, context, settings } = body;
+    const { text, sourceUrl, sourceTitle, context, settings, id } = body;
 
     // Detect dummy integration test values and respond immediately
     if (text === "VERIFY_INTEGRATION_TEST_DUMMY_CLIP_PING") {
@@ -293,6 +293,32 @@ export async function POST(req: NextRequest) {
     const userKeys = (settings?.geminiKeys && settings.geminiKeys.length > 0) ? settings.geminiKeys : (process.env.GEMINI_API_KEY ? [process.env.GEMINI_API_KEY] : []);
     const docId = (settings?.googleDocId && settings.googleDocId.trim()) ? settings.googleDocId : (process.env.GOOGLE_DOC_ID || "");
     const serviceAccountJsonStr = (settings?.serviceAccount && settings.serviceAccount.trim()) ? settings.serviceAccount : (process.env.GOOGLE_SERVICE_ACCOUNT || process.env.SERVICE_ACCOUNT || "");
+
+    // Deduplication check: if id is provided, check if it already exists in KV store
+    if (id && docId && isKvConfigured) {
+      try {
+        const key = `factbook:records:${docId.trim()}`;
+        const existingRecords = (await kv.get<any[]>(key)) || [];
+        const duplicate = existingRecords.find((r: any) => String(r.id) === String(id));
+        if (duplicate) {
+          console.log(`[Deduplication] Request with ID ${id} already synced. Skipping Doc write and returning success.`);
+          return NextResponse.json({
+            success: true,
+            result: {
+              categories: duplicate.categories,
+              formattedText: duplicate.formattedText,
+              aiMeta: {
+                model: duplicate.modelUsed,
+                cached: true
+              },
+              syncMeta: duplicate.syncResults,
+            }
+          });
+        }
+      } catch (kvError: any) {
+        console.warn("KV deduplication check bypassed safely:", kvError?.message || kvError);
+      }
+    }
 
     // 1. Setup Gemini Prompting & Response Schemas
     const defaultSystemPrompt = `You are an elite academic research analyst trained to construct top-tier, authoritative study evidence and logic cards for competitive, postgraduate examinations.
@@ -581,7 +607,7 @@ ${context || "No context provided."}
       try {
         const key = `factbook:records:${docId.trim()}`;
         const newRecord = {
-          id: String(Date.now()),
+          id: id ? String(id) : String(Date.now()),
           timestamp: new Date().toLocaleString(),
           originalText: text,
           sourceUrl: sourceUrl?.trim() || undefined,

@@ -116,6 +116,20 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun getErrorMessage(responseBody: String?): String {
+        if (responseBody.isNullOrEmpty()) return "Server error (empty response)"
+        return try {
+            val json = com.google.gson.JsonParser.parseString(responseBody).asJsonObject
+            if (json.has("error")) {
+                json.get("error").asString
+            } else {
+                responseBody
+            }
+        } catch (e: Exception) {
+            responseBody
+        }
+    }
+
     private fun submitCapture(
         vercelUrl: String,
         text: String,
@@ -132,9 +146,11 @@ class MainActivity : ComponentActivity() {
             return
         }
 
+        val factId = System.currentTimeMillis().toString()
+
         if (!isNetworkAvailable()) {
             val offlineFact = OfflineFact(
-                id = System.currentTimeMillis().toString(),
+                id = factId,
                 text = text,
                 sourceUrl = sourceUrl,
                 sourceTitle = sourceTitle,
@@ -150,6 +166,7 @@ class MainActivity : ComponentActivity() {
         val endpoint = "$cleanUrl/api/capture"
 
         val json = JsonObject().apply {
+            addProperty("id", factId) // Add ID for deduplication on server side
             addProperty("text", text)
             if (sourceUrl.isNotEmpty()) addProperty("sourceUrl", sourceUrl)
             if (sourceTitle.isNotEmpty()) addProperty("sourceTitle", sourceTitle)
@@ -165,16 +182,17 @@ class MainActivity : ComponentActivity() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val response = client.newCall(request).execute()
-                val responseBody = response.body?.string() ?: ""
+                val responseBody = response.body?.string()
 
                 withContext(Dispatchers.Main) {
                     if (response.isSuccessful) {
                         Toast.makeText(this@MainActivity, "Evidence Synchronized Successfully!", Toast.LENGTH_LONG).show()
                         onSuccess()
                     } else {
-                        Toast.makeText(this@MainActivity, "Sync Error: Saved to queue.", Toast.LENGTH_LONG).show()
+                        val serverError = getErrorMessage(responseBody)
+                        Toast.makeText(this@MainActivity, "Sync Error: $serverError. Saved to offline queue.", Toast.LENGTH_LONG).show()
                         val offlineFact = OfflineFact(
-                            id = System.currentTimeMillis().toString(),
+                            id = factId,
                             text = text,
                             sourceUrl = sourceUrl,
                             sourceTitle = sourceTitle,
@@ -189,7 +207,7 @@ class MainActivity : ComponentActivity() {
                 withContext(Dispatchers.Main) {
                     Toast.makeText(this@MainActivity, "Connection failure. Saved to queue.", Toast.LENGTH_LONG).show()
                     val offlineFact = OfflineFact(
-                        id = System.currentTimeMillis().toString(),
+                        id = factId,
                         text = text,
                         sourceUrl = sourceUrl,
                         sourceTitle = sourceTitle,
@@ -231,8 +249,12 @@ class MainActivity : ComponentActivity() {
             var lastError = ""
 
             for (fact in facts) {
+                // Introduce a 2-second rate-limiting delay between requests
+                kotlinx.coroutines.delay(2000)
+
                 val endpoint = "$cleanUrl/api/capture"
                 val json = JsonObject().apply {
+                    addProperty("id", fact.id) // Send current fact ID for server-side deduplication check
                     addProperty("text", fact.text)
                     if (fact.sourceUrl.isNotEmpty()) addProperty("sourceUrl", fact.sourceUrl)
                     if (fact.sourceTitle.isNotEmpty()) addProperty("sourceTitle", fact.sourceTitle)
@@ -247,12 +269,13 @@ class MainActivity : ComponentActivity() {
 
                 try {
                     val response = client.newCall(request).execute()
+                    val responseBody = response.body?.string()
                     if (response.isSuccessful) {
                         offlineFactStore.removeFact(fact.id)
                         successCount++
                     } else {
                         failCount++
-                        lastError = "Server HTTP ${response.code}"
+                        lastError = getErrorMessage(responseBody)
                     }
                 } catch (e: IOException) {
                     failCount++
@@ -377,33 +400,25 @@ fun MainScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(18.dp)
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .padding(horizontal = 20.dp, vertical = 10.dp)
         ) {
             // Branding Header
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 16.dp, bottom = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
-                    Text(
-                        text = "FACTBOOK.ACADEMICS",
-                        color = Color(0xFF3B82F6),
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 11.sp,
-                        fontFamily = FontFamily.Monospace,
-                        letterSpacing = 1.2.sp
-                    )
-                    Text(
-                        text = "Scholar's Ledger",
-                        color = Color.White,
-                        fontWeight = FontWeight.Black,
-                        fontSize = 24.sp,
-                        letterSpacing = (-0.5).sp
-                    )
-                }
+                Text(
+                    text = "Scholar's Ledger",
+                    color = Color.White,
+                    fontWeight = FontWeight.Black,
+                    fontSize = 24.sp,
+                    letterSpacing = (-0.5).sp
+                )
 
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -428,318 +443,336 @@ fun MainScreen(
                 }
             }
 
-            // Offline Sync Alert Card (Animated appearance based on elements)
-            if (offlineFacts.isNotEmpty()) {
-                Card(
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Center scrollable workstation forms vertically
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .border(1.2.dp, Color(0x66F59E0B), RoundedCornerShape(20.dp)),
-                    colors = CardDefaults.cardColors(containerColor = Color(0x1AF59E0B)),
-                    shape = RoundedCornerShape(20.dp)
+                        .verticalScroll(rememberScrollState())
+                        .fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Column(
-                        modifier = Modifier.padding(18.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                    // Offline Sync Alert Card (grows dynamically)
+                    if (offlineFacts.isNotEmpty()) {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .border(1.2.dp, Color(0x66F59E0B), RoundedCornerShape(20.dp)),
+                            colors = CardDefaults.cardColors(containerColor = Color(0x1AF59E0B)),
+                            shape = RoundedCornerShape(20.dp)
                         ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            Column(
+                                modifier = Modifier.padding(18.dp),
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(6.dp)
-                                        .background(Color(0xFFF59E0B), RoundedCornerShape(3.dp))
-                                )
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(6.dp)
+                                                .background(Color(0xFFF59E0B), RoundedCornerShape(3.dp))
+                                        )
+                                        Text(
+                                            text = "OFFLINE CAPTURE QUEUE",
+                                            color = Color(0xFFFBBF24),
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 10.sp,
+                                            fontFamily = FontFamily.Monospace,
+                                            letterSpacing = 1.sp
+                                        )
+                                    }
+
+                                    Text(
+                                        text = "${offlineFacts.size} Pending",
+                                        color = Color(0xFFFBBF24),
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 10.sp,
+                                        modifier = Modifier
+                                            .background(Color(0x33F59E0B), RoundedCornerShape(6.dp))
+                                            .padding(horizontal = 8.dp, vertical = 3.dp)
+                                    )
+                                }
+
                                 Text(
-                                    text = "OFFLINE CAPTURE QUEUE",
-                                    color = Color(0xFFFBBF24),
+                                    text = "Unsynchronized clippings are cached locally. Connect online to send these items to your ledger.",
+                                    color = Color(0xFFCBD5E1),
+                                    fontSize = 12.sp,
+                                    lineHeight = 16.sp
+                                )
+
+                                Button(
+                                    onClick = onSyncClick,
+                                    enabled = !isSyncing,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(12.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color.Transparent,
+                                        disabledContainerColor = Color(0x331E1E26)
+                                    ),
+                                    contentPadding = PaddingValues()
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .background(
+                                                brush = if (isOnline) {
+                                                    Brush.horizontalGradient(
+                                                        colors = listOf(Color(0xFFD97706), Color(0xFFF59E0B))
+                                                    )
+                                                } else {
+                                                    Brush.horizontalGradient(
+                                                        colors = listOf(Color(0x33D97706), Color(0x33F59E0B))
+                                                    )
+                                                },
+                                                shape = RoundedCornerShape(12.dp)
+                                            )
+                                            .padding(vertical = 12.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        if (isSyncing) {
+                                            CircularProgressIndicator(
+                                                modifier = Modifier.size(18.dp),
+                                                color = Color.White,
+                                                strokeWidth = 2.dp
+                                            )
+                                        } else {
+                                            Text(
+                                                text = if (isOnline) "Sync ${offlineFacts.size} Items Now" else "Device Offline (Connect to Sync)",
+                                                fontWeight = FontWeight.Bold,
+                                                color = if (isOnline) Color.White else Color(0xFF94A3B8),
+                                                fontSize = 13.sp
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if (showSettings) {
+                        // Settings Section Container
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .border(1.2.dp, cardBorder, RoundedCornerShape(20.dp)),
+                            colors = CardDefaults.cardColors(containerColor = cardBg),
+                            shape = RoundedCornerShape(20.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(18.dp),
+                                verticalArrangement = Arrangement.spacedBy(14.dp)
+                            ) {
+                                Text(
+                                    text = "WORKSPACE ENDPOINT",
+                                    color = Color(0xFF06B6D4),
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 10.sp,
                                     fontFamily = FontFamily.Monospace,
                                     letterSpacing = 1.sp
                                 )
-                            }
 
-                            Text(
-                                text = "${offlineFacts.size} Pending",
-                                color = Color(0xFFFBBF24),
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 10.sp,
-                                modifier = Modifier
-                                    .background(Color(0x33F59E0B), RoundedCornerShape(6.dp))
-                                    .padding(horizontal = 8.dp, vertical = 3.dp)
-                            )
-                        }
+                                OutlinedTextField(
+                                    value = vercelUrl,
+                                    onValueChange = { vercelUrl = it },
+                                    label = { Text("Vercel App Domain Link", color = Color(0xFF94A3B8), fontSize = 12.sp) },
+                                    placeholder = { Text("https://your-deployment.vercel.app") },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    singleLine = true,
+                                    shape = RoundedCornerShape(14.dp),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedTextColor = Color.White,
+                                        unfocusedTextColor = Color.White,
+                                        focusedContainerColor = textInputFieldBg,
+                                        unfocusedContainerColor = textInputFieldBg,
+                                        focusedBorderColor = focusedBorderColor,
+                                        unfocusedBorderColor = Color(0x1AFFFFFF),
+                                        cursorColor = focusedBorderColor
+                                    )
+                                )
 
-                        Text(
-                            text = "Unsynchronized clippings are cached locally. Connect online to send these items to your ledger.",
-                            color = Color(0xFFCBD5E1),
-                            fontSize = 12.sp,
-                            lineHeight = 16.sp
-                        )
-
-                        Button(
-                            onClick = onSyncClick,
-                            enabled = !isSyncing,
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color.Transparent,
-                                disabledContainerColor = Color(0x331E1E26)
-                            ),
-                            contentPadding = PaddingValues()
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .background(
-                                        brush = if (isOnline) {
-                                            Brush.horizontalGradient(
-                                                colors = listOf(Color(0xFFD97706), Color(0xFFF59E0B))
-                                            )
-                                        } else {
-                                            Brush.horizontalGradient(
-                                                colors = listOf(Color(0x33D97706), Color(0x33F59E0B))
-                                            )
-                                        },
-                                        shape = RoundedCornerShape(12.dp)
-                                    )
-                                    .padding(vertical = 12.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                if (isSyncing) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(18.dp),
-                                        color = Color.White,
-                                        strokeWidth = 2.dp
-                                    )
-                                } else {
-                                    Text(
-                                        text = if (isOnline) "Sync ${offlineFacts.size} Items Now" else "Device Offline (Connect to Sync)",
-                                        fontWeight = FontWeight.Bold,
-                                        color = if (isOnline) Color.White else Color(0xFF94A3B8),
-                                        fontSize = 13.sp
-                                    )
+                                Button(
+                                    onClick = {
+                                        onSaveVercelUrl(vercelUrl)
+                                        showSettings = false
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(14.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
+                                    contentPadding = PaddingValues()
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .background(actionButtonGradient, RoundedCornerShape(14.dp))
+                                            .padding(vertical = 14.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text("Save Workspace Link", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 13.sp)
+                                    }
                                 }
                             }
                         }
-                    }
-                }
-            }
-
-            if (showSettings) {
-                // Settings Section Container
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .border(1.2.dp, cardBorder, RoundedCornerShape(20.dp)),
-                    colors = CardDefaults.cardColors(containerColor = cardBg),
-                    shape = RoundedCornerShape(20.dp)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(18.dp),
-                        verticalArrangement = Arrangement.spacedBy(14.dp)
-                    ) {
-                        Text(
-                            text = "WORKSPACE ENDPOINT",
-                            color = Color(0xFF06B6D4),
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 10.sp,
-                            fontFamily = FontFamily.Monospace,
-                            letterSpacing = 1.sp
-                        )
-
-                        OutlinedTextField(
-                            value = vercelUrl,
-                            onValueChange = { vercelUrl = it },
-                            label = { Text("Vercel App Domain Link", color = Color(0xFF94A3B8), fontSize = 12.sp) },
-                            placeholder = { Text("https://your-deployment.vercel.app") },
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = true,
-                            shape = RoundedCornerShape(14.dp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedTextColor = Color.White,
-                                unfocusedTextColor = Color.White,
-                                focusedContainerColor = textInputFieldBg,
-                                unfocusedContainerColor = textInputFieldBg,
-                                focusedBorderColor = focusedBorderColor,
-                                unfocusedBorderColor = Color(0x1AFFFFFF),
-                                cursorColor = focusedBorderColor
-                            )
-                        )
-
-                        Button(
-                            onClick = {
-                                onSaveVercelUrl(vercelUrl)
-                                showSettings = false
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(14.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
-                            contentPadding = PaddingValues()
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .background(actionButtonGradient, RoundedCornerShape(14.dp))
-                                    .padding(vertical = 14.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text("Save Workspace Link", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 13.sp)
-                            }
-                        }
-                    }
-                }
-            } else {
-                // Capture Workstation Form
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .border(1.2.dp, cardBorder, RoundedCornerShape(20.dp)),
-                    colors = CardDefaults.cardColors(containerColor = cardBg),
-                    shape = RoundedCornerShape(20.dp)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(18.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        Text(
-                            text = "CAPTURE WORKSTATION",
-                            color = Color(0xFF3B82F6),
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 10.sp,
-                            fontFamily = FontFamily.Monospace,
-                            letterSpacing = 1.sp
-                        )
-
-                        // Text Input
-                        OutlinedTextField(
-                            value = textInput,
-                            onValueChange = { textInput = it },
-                            label = { Text("Raw Citation Clipping Text", color = Color(0xFF94A3B8), fontSize = 12.sp) },
+                    } else {
+                        // Capture Workstation Form
+                        Card(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .heightIn(min = 120.dp),
-                            maxLines = 8,
-                            shape = RoundedCornerShape(16.dp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedTextColor = Color.White,
-                                unfocusedTextColor = Color.White,
-                                focusedContainerColor = textInputFieldBg,
-                                unfocusedContainerColor = textInputFieldBg,
-                                focusedBorderColor = focusedBorderColor,
-                                unfocusedBorderColor = Color(0x1AFFFFFF),
-                                cursorColor = focusedBorderColor
-                            )
-                        )
-
-                        // Source Title
-                        OutlinedTextField(
-                            value = sourceTitleInput,
-                            onValueChange = { sourceTitleInput = it },
-                            label = { Text("Source Publisher / Title", color = Color(0xFF94A3B8), fontSize = 12.sp) },
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = true,
-                            shape = RoundedCornerShape(16.dp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedTextColor = Color.White,
-                                unfocusedTextColor = Color.White,
-                                focusedContainerColor = textInputFieldBg,
-                                unfocusedContainerColor = textInputFieldBg,
-                                focusedBorderColor = focusedBorderColor,
-                                unfocusedBorderColor = Color(0x1AFFFFFF),
-                                cursorColor = focusedBorderColor
-                            )
-                        )
-
-                        // Source URL
-                        OutlinedTextField(
-                            value = sourceUrlInput,
-                            onValueChange = { sourceUrlInput = it },
-                            label = { Text("Source Web URL", color = Color(0xFF94A3B8), fontSize = 12.sp) },
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = true,
-                            shape = RoundedCornerShape(16.dp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedTextColor = Color.White,
-                                unfocusedTextColor = Color.White,
-                                focusedContainerColor = textInputFieldBg,
-                                unfocusedContainerColor = textInputFieldBg,
-                                focusedBorderColor = focusedBorderColor,
-                                unfocusedBorderColor = Color(0x1AFFFFFF),
-                                cursorColor = focusedBorderColor
-                            )
-                        )
-
-                        // Context Remarks
-                        OutlinedTextField(
-                            value = contextInput,
-                            onValueChange = { contextInput = it },
-                            label = { Text("Study Remarks / Tags (Optional)", color = Color(0xFF94A3B8), fontSize = 12.sp) },
-                            modifier = Modifier.fillMaxWidth(),
-                            maxLines = 3,
-                            shape = RoundedCornerShape(16.dp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedTextColor = Color.White,
-                                unfocusedTextColor = Color.White,
-                                focusedContainerColor = textInputFieldBg,
-                                unfocusedContainerColor = textInputFieldBg,
-                                focusedBorderColor = focusedBorderColor,
-                                unfocusedBorderColor = Color(0x1AFFFFFF),
-                                cursorColor = focusedBorderColor
-                            )
-                        )
-
-                        Spacer(modifier = Modifier.height(4.dp))
-
-                        Button(
-                            onClick = {
-                                isSubmitting = true
-                                onSubmit(vercelUrl, textInput, sourceUrlInput, sourceTitleInput, contextInput) {
-                                    isSubmitting = false
-                                    textInput = ""
-                                    sourceUrlInput = ""
-                                    sourceTitleInput = ""
-                                    contextInput = ""
-                                }
-                            },
-                            enabled = textInput.isNotEmpty() && !isSubmitting,
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(16.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color.Transparent,
-                                disabledContainerColor = Color(0xFF1E1E26)
-                            ),
-                            contentPadding = PaddingValues()
+                                .border(1.2.dp, cardBorder, RoundedCornerShape(20.dp)),
+                            colors = CardDefaults.cardColors(containerColor = cardBg),
+                            shape = RoundedCornerShape(20.dp)
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .background(
-                                        brush = if (textInput.isNotEmpty()) actionButtonGradient else Brush.horizontalGradient(listOf(Color(0xFF1E1E26), Color(0xFF1E1E26))),
-                                        shape = RoundedCornerShape(16.dp)
-                                    )
-                                    .padding(vertical = 14.dp),
-                                contentAlignment = Alignment.Center
+                            Column(
+                                modifier = Modifier.padding(18.dp),
+                                verticalArrangement = Arrangement.spacedBy(16.dp)
                             ) {
-                                if (isSubmitting) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(20.dp),
-                                        color = Color.White,
-                                        strokeWidth = 2.dp
+                                Text(
+                                    text = "CAPTURE WORKSTATION",
+                                    color = Color(0xFF3B82F6),
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 10.sp,
+                                    fontFamily = FontFamily.Monospace,
+                                    letterSpacing = 1.sp
+                                )
+
+                                // Text Input
+                                OutlinedTextField(
+                                    value = textInput,
+                                    onValueChange = { textInput = it },
+                                    label = { Text("Raw Citation Clipping Text", color = Color(0xFF94A3B8), fontSize = 12.sp) },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .heightIn(min = 120.dp),
+                                    maxLines = 8,
+                                    shape = RoundedCornerShape(16.dp),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedTextColor = Color.White,
+                                        unfocusedTextColor = Color.White,
+                                        focusedContainerColor = textInputFieldBg,
+                                        unfocusedContainerColor = textInputFieldBg,
+                                        focusedBorderColor = focusedBorderColor,
+                                        unfocusedBorderColor = Color(0x1AFFFFFF),
+                                        cursorColor = focusedBorderColor
                                     )
-                                } else {
-                                    Text(
-                                        text = if (isOnline) "Index Evidence Item" else "Save Offline & Queue",
-                                        fontWeight = FontWeight.Bold,
-                                        color = if (textInput.isNotEmpty()) Color.White else Color.Gray,
-                                        fontSize = 13.sp
+                                )
+
+                                // Source Title
+                                OutlinedTextField(
+                                    value = sourceTitleInput,
+                                    onValueChange = { sourceTitleInput = it },
+                                    label = { Text("Source Publisher / Title", color = Color(0xFF94A3B8), fontSize = 12.sp) },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    singleLine = true,
+                                    shape = RoundedCornerShape(16.dp),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedTextColor = Color.White,
+                                        unfocusedTextColor = Color.White,
+                                        focusedContainerColor = textInputFieldBg,
+                                        unfocusedContainerColor = textInputFieldBg,
+                                        focusedBorderColor = focusedBorderColor,
+                                        unfocusedBorderColor = Color(0x1AFFFFFF),
+                                        cursorColor = focusedBorderColor
                                     )
+                                )
+
+                                // Source URL
+                                OutlinedTextField(
+                                    value = sourceUrlInput,
+                                    onValueChange = { sourceUrlInput = it },
+                                    label = { Text("Source Web URL", color = Color(0xFF94A3B8), fontSize = 12.sp) },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    singleLine = true,
+                                    shape = RoundedCornerShape(16.dp),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedTextColor = Color.White,
+                                        unfocusedTextColor = Color.White,
+                                        focusedContainerColor = textInputFieldBg,
+                                        unfocusedContainerColor = textInputFieldBg,
+                                        focusedBorderColor = focusedBorderColor,
+                                        unfocusedBorderColor = Color(0x1AFFFFFF),
+                                        cursorColor = focusedBorderColor
+                                    )
+                                )
+
+                                // Context Remarks
+                                OutlinedTextField(
+                                    value = contextInput,
+                                    onValueChange = { contextInput = it },
+                                    label = { Text("Study Remarks / Tags (Optional)", color = Color(0xFF94A3B8), fontSize = 12.sp) },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    maxLines = 3,
+                                    shape = RoundedCornerShape(16.dp),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedTextColor = Color.White,
+                                        unfocusedTextColor = Color.White,
+                                        focusedContainerColor = textInputFieldBg,
+                                        unfocusedContainerColor = textInputFieldBg,
+                                        focusedBorderColor = focusedBorderColor,
+                                        unfocusedBorderColor = Color(0x1AFFFFFF),
+                                        cursorColor = focusedBorderColor
+                                    )
+                                )
+
+                                Spacer(modifier = Modifier.height(4.dp))
+
+                                Button(
+                                    onClick = {
+                                        isSubmitting = true
+                                        onSubmit(vercelUrl, textInput, sourceUrlInput, sourceTitleInput, contextInput) {
+                                            isSubmitting = false
+                                            textInput = ""
+                                            sourceUrlInput = ""
+                                            sourceTitleInput = ""
+                                            contextInput = ""
+                                        }
+                                    },
+                                    enabled = textInput.isNotEmpty() && !isSubmitting,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(16.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color.Transparent,
+                                        disabledContainerColor = Color(0xFF1E1E26)
+                                    ),
+                                    contentPadding = PaddingValues()
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .background(
+                                                brush = if (textInput.isNotEmpty()) actionButtonGradient else Brush.horizontalGradient(listOf(Color(0xFF1E1E26), Color(0xFF1E1E26))),
+                                                shape = RoundedCornerShape(16.dp)
+                                            )
+                                            .padding(vertical = 14.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        if (isSubmitting) {
+                                            CircularProgressIndicator(
+                                                modifier = Modifier.size(20.dp),
+                                                color = Color.White,
+                                                strokeWidth = 2.dp
+                                            )
+                                        } else {
+                                            Text(
+                                                text = if (isOnline) "Index Evidence Item" else "Save Offline & Queue",
+                                                fontWeight = FontWeight.Bold,
+                                                color = if (textInput.isNotEmpty()) Color.White else Color.Gray,
+                                                fontSize = 13.sp
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }

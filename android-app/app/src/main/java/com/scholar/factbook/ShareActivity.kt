@@ -108,7 +108,22 @@ class ShareActivity : ComponentActivity() {
         }
     }
 
+    private fun getErrorMessage(responseBody: String?): String {
+        if (responseBody.isNullOrEmpty()) return "Server error (empty response)"
+        return try {
+            val json = com.google.gson.JsonParser.parseString(responseBody).asJsonObject
+            if (json.has("error")) {
+                json.get("error").asString
+            } else {
+                responseBody
+            }
+        } catch (e: Exception) {
+            responseBody
+        }
+    }
+
     private fun saveOffline(
+        factId: String,
         text: String,
         sourceUrl: String,
         sourceTitle: String,
@@ -116,7 +131,7 @@ class ShareActivity : ComponentActivity() {
     ) {
         val store = OfflineFactStore(this)
         val offlineFact = OfflineFact(
-            id = System.currentTimeMillis().toString(),
+            id = factId,
             text = text,
             sourceUrl = sourceUrl,
             sourceTitle = sourceTitle,
@@ -146,8 +161,10 @@ class ShareActivity : ComponentActivity() {
         sourceTitle: String,
         contextRemarks: String
     ) {
+        val factId = System.currentTimeMillis().toString()
+
         if (!isNetworkAvailable()) {
-            saveOffline(text, sourceUrl, sourceTitle, contextRemarks)
+            saveOffline(factId, text, sourceUrl, sourceTitle, contextRemarks)
             return
         }
 
@@ -155,6 +172,7 @@ class ShareActivity : ComponentActivity() {
         val endpoint = "$cleanUrl/api/capture"
 
         val json = JsonObject().apply {
+            addProperty("id", factId) // Add ID for server-side deduplication check
             addProperty("text", text)
             if (sourceUrl.isNotEmpty()) addProperty("sourceUrl", sourceUrl)
             if (sourceTitle.isNotEmpty()) addProperty("sourceTitle", sourceTitle)
@@ -170,21 +188,22 @@ class ShareActivity : ComponentActivity() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val response = client.newCall(request).execute()
-                val responseBody = response.body?.string() ?: ""
+                val responseBody = response.body?.string()
 
                 withContext(Dispatchers.Main) {
                     if (response.isSuccessful) {
                         Toast.makeText(this@ShareActivity, "Evidence Synchronized Successfully!", Toast.LENGTH_LONG).show()
                         finish() // Close overlay activity on success
                     } else {
-                        Toast.makeText(this@ShareActivity, "Sync failed: Server error. Saved to queue.", Toast.LENGTH_LONG).show()
-                        saveOffline(text, sourceUrl, sourceTitle, contextRemarks)
+                        val serverError = getErrorMessage(responseBody)
+                        Toast.makeText(this@ShareActivity, "Sync error: $serverError. Saved to queue.", Toast.LENGTH_LONG).show()
+                        saveOffline(factId, text, sourceUrl, sourceTitle, contextRemarks)
                     }
                 }
             } catch (e: IOException) {
                 withContext(Dispatchers.Main) {
                     Toast.makeText(this@ShareActivity, "Network error. Saved to local queue.", Toast.LENGTH_LONG).show()
-                    saveOffline(text, sourceUrl, sourceTitle, contextRemarks)
+                    saveOffline(factId, text, sourceUrl, sourceTitle, contextRemarks)
                 }
             }
         }
@@ -273,14 +292,6 @@ fun ShareScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column {
-                    Text(
-                        text = "FACTBOOK.ACADEMICS",
-                        color = Color(0xFF3B82F6),
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 9.sp,
-                        fontFamily = FontFamily.Monospace,
-                        letterSpacing = 1.sp
-                    )
                     Text(
                         text = "Quick Evidence Capture",
                         color = Color.White,
