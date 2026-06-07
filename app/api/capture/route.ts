@@ -210,7 +210,10 @@ async function executeGeminiWithFallback(
 ) {
   // Extract custom user keys, or fall back to platform's GEMINI_API_KEY
   const userKeys = keys.map((k) => k.trim()).filter(Boolean);
-  const activeKeys = userKeys.length > 0 ? userKeys : [process.env.GEMINI_API_KEY || ""];
+  const defaultEnvKeys = process.env.GEMINI_API_KEY
+    ? process.env.GEMINI_API_KEY.split(/[\n,;]+/).map((k) => k.trim()).filter(Boolean)
+    : [];
+  const activeKeys = userKeys.length > 0 ? userKeys : defaultEnvKeys;
 
   if (activeKeys.length === 0 || !activeKeys[0]) {
     throw new Error("No Gemini API Keys configured. Please paste your API Key in the Settings page.");
@@ -290,7 +293,10 @@ export async function POST(req: NextRequest) {
     }
 
     const modelToUse = settings?.model || process.env.MODEL || "gemini-3.5-flash";
-    const userKeys = (settings?.geminiKeys && settings.geminiKeys.length > 0) ? settings.geminiKeys : (process.env.GEMINI_API_KEY ? [process.env.GEMINI_API_KEY] : []);
+    const envKeys = process.env.GEMINI_API_KEY
+      ? process.env.GEMINI_API_KEY.split(/[\n,;]+/).map((k) => k.trim()).filter(Boolean)
+      : [];
+    const userKeys = (settings?.geminiKeys && settings.geminiKeys.length > 0) ? settings.geminiKeys : envKeys;
     const docId = (settings?.googleDocId && settings.googleDocId.trim()) ? settings.googleDocId : (process.env.GOOGLE_DOC_ID || "");
     const serviceAccountJsonStr = (settings?.serviceAccount && settings.serviceAccount.trim()) ? settings.serviceAccount : (process.env.GOOGLE_SERVICE_ACCOUNT || process.env.SERVICE_ACCOUNT || "");
 
