@@ -40,9 +40,14 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
+import java.util.concurrent.TimeUnit
 
 class MainActivity : ComponentActivity() {
-    private val client = OkHttpClient()
+    private val client = OkHttpClient.Builder()
+        .connectTimeout(60, TimeUnit.SECONDS)
+        .readTimeout(60, TimeUnit.SECONDS)
+        .writeTimeout(60, TimeUnit.SECONDS)
+        .build()
     private val offlineFactStore by lazy { OfflineFactStore(this) }
     private val offlineFactsState = mutableStateOf<List<OfflineFact>>(emptyList())
     private val isOnlineState = mutableStateOf(false)

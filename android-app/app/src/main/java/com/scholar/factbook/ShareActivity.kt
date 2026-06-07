@@ -39,9 +39,14 @@ import android.net.NetworkRequest
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
 import java.util.regex.Pattern
+import java.util.concurrent.TimeUnit
 
 class ShareActivity : ComponentActivity() {
-    private val client = OkHttpClient()
+    private val client = OkHttpClient.Builder()
+        .connectTimeout(60, TimeUnit.SECONDS)
+        .readTimeout(60, TimeUnit.SECONDS)
+        .writeTimeout(60, TimeUnit.SECONDS)
+        .build()
     private val isOnlineState = mutableStateOf(false)
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
 
