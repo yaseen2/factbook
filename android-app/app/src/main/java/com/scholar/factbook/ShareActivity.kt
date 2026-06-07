@@ -2,6 +2,8 @@ package com.scholar.factbook
 
 import android.content.Context
 import android.content.Intent
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -17,6 +19,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -65,6 +68,8 @@ class ShareActivity : ComponentActivity() {
             }
         }
 
+        val isOnline = isNetworkAvailable()
+
         setContent {
             FactbookTheme {
                 Box(
@@ -76,7 +81,7 @@ class ShareActivity : ComponentActivity() {
                     contentAlignment = Alignment.Center
                 ) {
                     ShareScreen(
-                        vercelUrl = savedVercelUrl,
+                        isOnline = isOnline,
                         initialText = sharedText,
                         initialUrl = sharedUrl,
                         initialTitle = sharedTitle,
@@ -88,6 +93,37 @@ class ShareActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    private fun isNetworkAvailable(): Boolean {
+        val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val network = connectivityManager.activeNetwork ?: return false
+        val activeNetwork = connectivityManager.getNetworkCapabilities(network) ?: return false
+        return when {
+            activeNetwork.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> true
+            activeNetwork.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> true
+            activeNetwork.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> true
+            else -> false
+        }
+    }
+
+    private fun saveOffline(
+        text: String,
+        sourceUrl: String,
+        sourceTitle: String,
+        contextRemarks: String
+    ) {
+        val store = OfflineFactStore(this)
+        val offlineFact = OfflineFact(
+            id = System.currentTimeMillis().toString(),
+            text = text,
+            sourceUrl = sourceUrl,
+            sourceTitle = sourceTitle,
+            context = contextRemarks
+        )
+        store.addFact(offlineFact)
+        Toast.makeText(this, "Network Offline. Saved to local queue!", Toast.LENGTH_LONG).show()
+        finish()
     }
 
     private fun extractUrlAndText(text: String): Pair<String, String> {
@@ -109,6 +145,11 @@ class ShareActivity : ComponentActivity() {
         sourceTitle: String,
         contextRemarks: String
     ) {
+        if (!isNetworkAvailable()) {
+            saveOffline(text, sourceUrl, sourceTitle, contextRemarks)
+            return
+        }
+
         val cleanUrl = vercelUrl.trim().removeSuffix("/")
         val endpoint = "$cleanUrl/api/capture"
 
@@ -135,22 +176,60 @@ class ShareActivity : ComponentActivity() {
                         Toast.makeText(this@ShareActivity, "Evidence Synchronized Successfully!", Toast.LENGTH_LONG).show()
                         finish() // Close overlay activity on success
                     } else {
-                        Toast.makeText(this@ShareActivity, "Sync Error: ${response.code}\n$responseBody", Toast.LENGTH_LONG).show()
+                        Toast.makeText(this@ShareActivity, "Sync failed: Server error. Saved to queue.", Toast.LENGTH_LONG).show()
+                        saveOffline(text, sourceUrl, sourceTitle, contextRemarks)
                     }
                 }
             } catch (e: IOException) {
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(this@ShareActivity, "Network Failure: ${e.message}", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this@ShareActivity, "Network error. Saved to local queue.", Toast.LENGTH_LONG).show()
+                    saveOffline(text, sourceUrl, sourceTitle, contextRemarks)
                 }
             }
         }
     }
 }
 
+@Composable
+fun ConnectionStatusBadge(isOnline: Boolean) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        modifier = Modifier
+            .background(
+                color = if (isOnline) Color(0x1F10B981) else Color(0x24F59E0B),
+                shape = RoundedCornerShape(12.dp)
+            )
+            .border(
+                width = 1.dp,
+                color = if (isOnline) Color(0x3310B981) else Color(0x40F59E0B),
+                shape = RoundedCornerShape(12.dp)
+            )
+            .padding(horizontal = 8.dp, vertical = 4.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(6.dp)
+                .background(
+                    color = if (isOnline) Color(0xFF10B981) else Color(0xFFF59E0B),
+                    shape = RoundedCornerShape(3.dp)
+                )
+        )
+        Text(
+            text = if (isOnline) "ONLINE" else "OFFLINE",
+            color = if (isOnline) Color(0xFF34D399) else Color(0xFFFBBF24),
+            fontSize = 8.sp,
+            fontWeight = FontWeight.Bold,
+            fontFamily = FontFamily.Monospace,
+            letterSpacing = 0.5.sp
+        )
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ShareScreen(
-    vercelUrl: String,
+    isOnline: Boolean,
     initialText: String,
     initialUrl: String,
     initialTitle: String,
@@ -163,19 +242,28 @@ fun ShareScreen(
     var contextInput by remember { mutableStateOf("") }
     var isSubmitting by remember { mutableStateOf(false) }
 
+    val glassBg = Color(0xF20B0C18)
+    val cardBorder = Color(0x33FFFFFF)
+    val focusedBorderColor = Color(0xFF3B82F6)
+    val textInputFieldBg = Color(0xFF121424)
+
+    val buttonGradient = Brush.horizontalGradient(
+        colors = listOf(Color(0xFF3B82F6), Color(0xFF8B5CF6))
+    )
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(enabled = false, onClick = {}) // Clicking card does not dismiss
-            .border(1.dp, Color(0xFF27272A), RoundedCornerShape(16.dp)),
-        colors = CardDefaults.cardColors(containerColor = Color(0xE60F0F1D)),
-        shape = RoundedCornerShape(16.dp)
+            .border(1.2.dp, cardBorder, RoundedCornerShape(24.dp)),
+        colors = CardDefaults.cardColors(containerColor = glassBg),
+        shape = RoundedCornerShape(24.dp)
     ) {
         Column(
             modifier = Modifier
-                .padding(16.dp)
+                .padding(20.dp)
                 .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // Header
             Row(
@@ -190,35 +278,38 @@ fun ShareScreen(
                         fontWeight = FontWeight.Bold,
                         fontSize = 9.sp,
                         fontFamily = FontFamily.Monospace,
-                        letterSpacing = 0.5.sp
+                        letterSpacing = 1.sp
                     )
                     Text(
                         text = "Quick Evidence Capture",
                         color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp
+                        fontWeight = FontWeight.Black,
+                        fontSize = 18.sp,
+                        letterSpacing = (-0.5).sp
                     )
                 }
-                
-                TextButton(onClick = onCancel) {
-                    Text("Cancel", color = Color.Gray, fontSize = 12.sp)
-                }
+
+                ConnectionStatusBadge(isOnline = isOnline)
             }
 
             // Raw citation text
             OutlinedTextField(
                 value = textInput,
                 onValueChange = { textInput = it },
-                label = { Text("Raw Citation Clipping Text", color = Color.Gray) },
+                label = { Text("Raw Citation Clipping Text", color = Color(0xFF94A3B8), fontSize = 12.sp) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = 100.dp, max = 180.dp),
                 maxLines = 6,
+                shape = RoundedCornerShape(16.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedTextColor = Color.White,
                     unfocusedTextColor = Color.White,
-                    focusedBorderColor = Color(0xFF2563EB),
-                    unfocusedBorderColor = Color(0xFF27272A)
+                    focusedContainerColor = textInputFieldBg,
+                    unfocusedContainerColor = textInputFieldBg,
+                    focusedBorderColor = focusedBorderColor,
+                    unfocusedBorderColor = Color(0x1AFFFFFF),
+                    cursorColor = focusedBorderColor
                 )
             )
 
@@ -226,14 +317,18 @@ fun ShareScreen(
             OutlinedTextField(
                 value = sourceTitleInput,
                 onValueChange = { sourceTitleInput = it },
-                label = { Text("Source Publisher / Title", color = Color.Gray) },
+                label = { Text("Source Publisher / Title", color = Color(0xFF94A3B8), fontSize = 12.sp) },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
+                shape = RoundedCornerShape(16.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedTextColor = Color.White,
                     unfocusedTextColor = Color.White,
-                    focusedBorderColor = Color(0xFF2563EB),
-                    unfocusedBorderColor = Color(0xFF27272A)
+                    focusedContainerColor = textInputFieldBg,
+                    unfocusedContainerColor = textInputFieldBg,
+                    focusedBorderColor = focusedBorderColor,
+                    unfocusedBorderColor = Color(0x1AFFFFFF),
+                    cursorColor = focusedBorderColor
                 )
             )
 
@@ -241,59 +336,101 @@ fun ShareScreen(
             OutlinedTextField(
                 value = sourceUrlInput,
                 onValueChange = { sourceUrlInput = it },
-                label = { Text("Source Web URL", color = Color.Gray) },
+                label = { Text("Source Web URL", color = Color(0xFF94A3B8), fontSize = 12.sp) },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
+                shape = RoundedCornerShape(16.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedTextColor = Color.White,
                     unfocusedTextColor = Color.White,
-                    focusedBorderColor = Color(0xFF2563EB),
-                    unfocusedBorderColor = Color(0xFF27272A)
+                    focusedContainerColor = textInputFieldBg,
+                    unfocusedContainerColor = textInputFieldBg,
+                    focusedBorderColor = focusedBorderColor,
+                    unfocusedBorderColor = Color(0x1AFFFFFF),
+                    cursorColor = focusedBorderColor
                 )
             )
 
-            // Tags
+            // Remarks / Tags
             OutlinedTextField(
                 value = contextInput,
                 onValueChange = { contextInput = it },
-                label = { Text("Study Remarks / Tags (Optional)", color = Color.Gray) },
+                label = { Text("Study Remarks / Tags (Optional)", color = Color(0xFF94A3B8), fontSize = 12.sp) },
                 modifier = Modifier.fillMaxWidth(),
                 maxLines = 2,
+                shape = RoundedCornerShape(16.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedTextColor = Color.White,
                     unfocusedTextColor = Color.White,
-                    focusedBorderColor = Color(0xFF2563EB),
-                    unfocusedBorderColor = Color(0xFF27272A)
+                    focusedContainerColor = textInputFieldBg,
+                    unfocusedContainerColor = textInputFieldBg,
+                    focusedBorderColor = focusedBorderColor,
+                    unfocusedBorderColor = Color(0x1AFFFFFF),
+                    cursorColor = focusedBorderColor
                 )
             )
 
-            Spacer(modifier = Modifier.height(2.dp))
+            Spacer(modifier = Modifier.height(4.dp))
 
-            Button(
-                onClick = {
-                    isSubmitting = true
-                    onSubmit(textInput, sourceUrlInput, sourceTitleInput, contextInput)
-                },
-                enabled = textInput.isNotEmpty() && !isSubmitting,
+            // Actions Row
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF2563EB),
-                    disabledContainerColor = Color(0xFF1E1E26)
-                ),
-                shape = RoundedCornerShape(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                if (isSubmitting) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        color = Color.White,
-                        strokeWidth = 2.dp
-                    )
-                } else {
-                    Text(
-                        text = "Structure & Index Evidence Item",
-                        fontWeight = FontWeight.Bold,
-                        color = if (textInput.isNotEmpty()) Color.White else Color.Gray
-                    )
+                // Cancel Button
+                OutlinedButton(
+                    onClick = onCancel,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = Color.White
+                    ),
+                    border = BorderStroke(1.dp, Color(0x33FFFFFF))
+                ) {
+                    Text("Cancel", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                }
+
+                // Submit Button with premium background gradient
+                Button(
+                    onClick = {
+                        isSubmitting = true
+                        onSubmit(textInput, sourceUrlInput, sourceTitleInput, contextInput)
+                    },
+                    enabled = textInput.isNotEmpty() && !isSubmitting,
+                    modifier = Modifier
+                        .weight(2f),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.Transparent,
+                        disabledContainerColor = Color(0xFF1E1E26)
+                    ),
+                    contentPadding = PaddingValues()
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                brush = if (textInput.isNotEmpty()) buttonGradient else Brush.horizontalGradient(listOf(Color(0xFF1E1E26), Color(0xFF1E1E26))),
+                                shape = RoundedCornerShape(16.dp)
+                            )
+                            .padding(vertical = 14.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (isSubmitting) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                color = Color.White,
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Text(
+                                text = if (isOnline) "Index Evidence" else "Queue Offline",
+                                fontWeight = FontWeight.Bold,
+                                color = if (textInput.isNotEmpty()) Color.White else Color.Gray,
+                                fontSize = 13.sp
+                            )
+                        }
+                    }
                 }
             }
         }
