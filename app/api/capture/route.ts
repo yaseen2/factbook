@@ -330,7 +330,7 @@ export async function POST(req: NextRequest) {
     const defaultSystemPrompt = `You are an elite academic research analyst trained to construct top-tier, authoritative study evidence and logic cards for competitive, postgraduate examinations.
 Your task is to review rough text clips and organize them into precise, structured academic argument formulations.
 
-Analyze the user's provided raw text clipping and optional context. You MUST classify this piece of evidence into 1 to 3 categories from this selection, depending on which fields represent the absolute best academic fit:
+Analyze the user's provided raw text clipping and optional context. You MUST classify this piece of evidence into exactly 1 category from this selection that represents the single best, most suitable academic fit:
 Categories to select from:
 ${JSON.stringify(PREDEFINED_CATEGORIES, null, 2)}
 
@@ -379,7 +379,7 @@ ${context || "No context provided."}
           items: {
             type: Type.STRING,
           },
-          description: "List of 1 to 3 categories matching predefined subjects."
+          description: "List containing exactly one category representing the single best, most suitable academic fit matching predefined subjects."
         },
         formattedText: {
           type: Type.STRING,
