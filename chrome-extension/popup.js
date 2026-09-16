@@ -44,7 +44,7 @@ document.getElementById("save-url-btn").addEventListener("click", () => {
 document.getElementById("sync-credentials-btn").addEventListener("click", () => {
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     const activeTab = tabs[0];
-    if (!activeTab || !activeTab.id) {
+    if (!activeTab || typeof activeTab.id !== "number" || activeTab.id < 0) {
       showBanner("No active browser tab found.", "error");
       return;
     }

@@ -262,6 +262,49 @@ async function executeGeminiWithFallback(
   );
 }
 
+// Helper to safely parse and sanitize Google Cloud Service Account credentials
+function parseAndSanitizeServiceAccount(serviceAccountInput: any) {
+  if (!serviceAccountInput) return null;
+  let sa: any;
+  if (typeof serviceAccountInput === "object") {
+    sa = { ...serviceAccountInput };
+  } else if (typeof serviceAccountInput === "string") {
+    let raw = serviceAccountInput.trim();
+    // Handle base64 encoded strings
+    if (!raw.startsWith("{") && !raw.startsWith('"')) {
+      try {
+        const decoded = Buffer.from(raw, "base64").toString("utf-8");
+        if (decoded.trim().startsWith("{")) {
+          raw = decoded.trim();
+        }
+      } catch (_) {}
+    }
+    try {
+      sa = JSON.parse(raw);
+    } catch (e) {
+      try {
+        sa = JSON.parse(JSON.parse(raw));
+      } catch (_) {
+        throw new Error("Invalid Service Account JSON format: Unable to parse JSON string.");
+      }
+    }
+  }
+
+  if (!sa || typeof sa !== "object") {
+    throw new Error("Invalid Service Account JSON: parsed result is not an object.");
+  }
+
+  // Ensure private_key has actual newlines and no malformed characters
+  if (sa.private_key && typeof sa.private_key === "string") {
+    sa.private_key = sa.private_key
+      .replace(/\\n/g, "\n")
+      .replace(/\r\n/g, "\n")
+      .trim();
+  }
+
+  return sa;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -274,8 +317,8 @@ export async function POST(req: NextRequest) {
       if (!docId || !serviceAccountJsonStr) {
         return NextResponse.json({ error: "Missing verification inputs" }, { status: 400 });
       }
-      // Simple credentials check
-      const sa = JSON.parse(serviceAccountJsonStr);
+      // Simple credentials check with sanitized private key
+      const sa = parseAndSanitizeServiceAccount(serviceAccountJsonStr);
       const docAuth = new google.auth.GoogleAuth({
         credentials: sa,
         scopes: ["https://www.googleapis.com/auth/documents"],
@@ -427,7 +470,7 @@ ${context || "No context provided."}
 
     if (docId && serviceAccountJsonStr) {
       try {
-        const sa = JSON.parse(serviceAccountJsonStr);
+        const sa = parseAndSanitizeServiceAccount(serviceAccountJsonStr);
         const docAuth = new google.auth.GoogleAuth({
           credentials: sa,
           scopes: ["https://www.googleapis.com/auth/documents"],
@@ -596,10 +639,14 @@ ${context || "No context provided."}
         }
       } catch (err: any) {
         console.error("Auth / Doc fetching failure:", err);
+        let errorMsg = err?.message || String(err);
+        if (errorMsg.includes("invalid_grant") || errorMsg.includes("Invalid jwt signature")) {
+          errorMsg = "invalid_grant: Invalid jwt signature. Google Cloud rejected this Service Account key. The key was likely deleted, expired, or rotated in Google Cloud Console IAM, or the JSON key in Settings contains corrupted characters. Please generate a fresh JSON key from Google Cloud Console > IAM & Admin > Service Accounts > Keys, and paste it into Settings.";
+        }
         syncResults = matchedCategories.map(cat => ({
           category: cat,
           status: "failed",
-          details: `Doc communication failed: ${err.message || String(err)}`
+          details: `Doc communication failed: ${errorMsg}`
         }));
       }
     } else {
