@@ -16,3 +16,6 @@
 local.properties
 .env
 debug.keystore
+*.json
+!metadata.json
+!google-services.json

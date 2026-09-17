@@ -135,14 +135,14 @@ interface StyleRange {
 function parseMarkdownAndBuildStyles(text: string) {
   let plainText = "";
   const boldRanges: StyleRange[] = [];
-  
+
   // Resolve literal \n strings if they exist to assure actual line breaks
   const preparedText = text.replace(/\\n/g, "\n");
-  
+
   let i = 0;
   let inBold = false;
   let boldStart = 0;
-  
+
   while (i < preparedText.length) {
     if (preparedText.substring(i, i + 2) === "**") {
       if (!inBold) {
@@ -160,19 +160,19 @@ function parseMarkdownAndBuildStyles(text: string) {
       i++;
     }
   }
-  
+
   if (inBold && plainText.length > boldStart) {
     boldRanges.push({ start: boldStart, end: plainText.length });
   }
-  
+
   // Also, let's automatically bold key labels such as "THE ARGUMENT:" and "THE EVIDENCE:" or any prefix starting with 📌
   const lines = plainText.split("\n");
   let currentOffset = 0;
-  
+
   for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
     const line = lines[lineIndex];
     const trimmed = line.trim();
-    
+
     // Auto-bold the headline (line starting with 📌)
     if (line.length > 0 && (lineIndex === 0 || trimmed.startsWith("📌"))) {
       if (!boldRanges.some(r => r.start <= currentOffset && r.end >= currentOffset + line.length)) {
@@ -182,7 +182,7 @@ function parseMarkdownAndBuildStyles(text: string) {
       // Auto-bold labels like "THE ARGUMENT:" or "THE EVIDENCE:"
       const upper = trimmed.toUpperCase();
       const labels = ["THE ARGUMENT:", "ARGUMENT:", "THE EVIDENCE:", "EVIDENCE:", "THE CLAIMS:", "THE ANALYSIS:"];
-      
+
       for (const label of labels) {
         if (upper.startsWith(label) && label.length > 0) {
           const relativeStart = currentOffset + line.indexOf(trimmed);
@@ -196,7 +196,7 @@ function parseMarkdownAndBuildStyles(text: string) {
     }
     currentOffset += line.length + 1; // +1 for the newline character
   }
-  
+
   return { plainText, boldRanges };
 }
 
@@ -277,7 +277,7 @@ function parseAndSanitizeServiceAccount(serviceAccountInput: any) {
         if (decoded.trim().startsWith("{")) {
           raw = decoded.trim();
         }
-      } catch (_) {}
+      } catch (_) { }
     }
     try {
       sa = JSON.parse(raw);
