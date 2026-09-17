@@ -65,6 +65,9 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
       args: [info.selectionText || "", targetTab.title || "", targetTab.url || ""]
     });
   } catch (err) {
+    if (targetTab.url?.startsWith("file:///")) {
+      console.warn("Scholar's Ledger: To capture text from local files or PDFs, you must enable 'Allow access to file URLs' in edge://extensions (Click 'Details' on Scholar's Ledger -> toggle ON 'Allow access to file URLs').");
+    }
     console.error("Failed to inject Scholar's Ledger content script:", err);
   }
 });

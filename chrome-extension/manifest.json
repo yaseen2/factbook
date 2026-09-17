@@ -12,7 +12,8 @@
   ],
   "host_permissions": [
     "http://localhost/*",
-    "https://*/*"
+    "https://*/*",
+    "file:///*"
   ],
   "background": {
     "service_worker": "background.js"
