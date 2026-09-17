@@ -422,9 +422,12 @@
       let syncText = "";
       if (syncMeta.length > 0) {
         const successes = syncMeta.filter(s => s.status === "success").map(s => s.category);
-        const fails = syncMeta.filter(s => s.status === "failed").map(s => s.category);
-        if (successes.length > 0) syncText += ` Synced to Google Doc tabs: ${successes.join(", ")}.`;
-        if (fails.length > 0) syncText += ` (Failed to sync to: ${fails.join(", ")})`;
+        const fails = syncMeta.filter(s => s.status === "failed");
+        if (successes.length > 0) syncText += ` Synced to Google Doc: ${successes.join(", ")}.`;
+        if (fails.length > 0) {
+          const reasons = fails.map(f => f.details || f.category).join("; ");
+          syncText += ` [Sync error: ${reasons}]`;
+        }
       }
 
       // Show success banner

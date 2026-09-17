@@ -13,9 +13,14 @@ function showBanner(message, type) {
 
 // Load current configuration from extension storage on mount
 document.addEventListener("DOMContentLoaded", () => {
-  chrome.storage.local.get(["ledgerUrl"], (result) => {
+  chrome.storage.local.get(["ledgerUrl", "fb_sa"], (result) => {
     const urlInput = document.getElementById("ledger-url-input");
-    urlInput.value = result.ledgerUrl || "http://localhost:3000";
+    urlInput.value = result.ledgerUrl || "https://factbook-orcin.vercel.app";
+    if (result.fb_sa) {
+      showBanner("Using custom synced credentials", "info");
+    } else {
+      showBanner("Using Vercel server environment variables", "info");
+    }
   });
 });
 
@@ -86,5 +91,12 @@ document.getElementById("sync-credentials-btn").addEventListener("click", () => 
         showBanner("No ledger credentials found on this page. Navigate to your Ledger settings tab first.", "error");
       }
     });
+  });
+});
+
+// Clear credentials to fall back directly to Vercel environment variables
+document.getElementById("clear-credentials-btn").addEventListener("click", () => {
+  chrome.storage.local.remove(["fb_keys", "fb_doc_id", "fb_sa", "fb_prompt", "fb_model"], () => {
+    showBanner("Cleared! Extension will now use Vercel server environment variables.", "success");
   });
 });

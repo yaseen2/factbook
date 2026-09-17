@@ -84,7 +84,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       "fb_prompt",
       "fb_model"
     ], (settings) => {
-      const ledgerUrl = (settings.ledgerUrl || "http://localhost:3000").replace(/\/$/, "");
+      const ledgerUrl = (settings.ledgerUrl || "https://factbook-orcin.vercel.app").replace(/\/$/, "");
       const keysStr = settings.fb_keys || "";
       const geminiKeys = keysStr.split("\n").map(k => k.trim()).filter(Boolean);
 
@@ -96,9 +96,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         settings: {
           model: settings.fb_model || "gemini-3.5-flash",
           geminiKeys: geminiKeys.length > 0 ? geminiKeys : undefined,
-          googleDocId: settings.fb_doc_id ? settings.fb_doc_id.trim() : undefined,
-          serviceAccount: settings.fb_sa ? settings.fb_sa.trim() : undefined,
-          customPrompt: settings.fb_prompt ? settings.fb_prompt.trim() : undefined,
+          googleDocId: (settings.fb_doc_id && settings.fb_doc_id.trim()) ? settings.fb_doc_id.trim() : undefined,
+          serviceAccount: (settings.fb_sa && settings.fb_sa.trim()) ? settings.fb_sa.trim() : undefined,
+          customPrompt: (settings.fb_prompt && settings.fb_prompt.trim()) ? settings.fb_prompt.trim() : undefined,
         }
       };
 
